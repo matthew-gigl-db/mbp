@@ -1,0 +1,27 @@
+# resources/build_waves_smoke.job.yml
+# Smoke test: a 2-item for_each of a no-op Genie Code task.
+# Pass = both iterations SUCCESS and each reply echoes its session_id (A, B).
+# Patched into genie_tasks by the setup job (run with run_smoke=true to patch + run).
+
+resources:
+  jobs:
+    build_waves_smoke:
+      name: "${var.project_name}: Build Waves Smoke Test"
+      description: "Smoke test: Genie Code task inside for_each, verifying input values reach the prompt."
+      max_concurrent_runs: 1
+      tags:
+        purpose: build-waves-smoke
+        managed_by: genie-build-waves
+      tasks:
+        - task_key: smoke_sessions
+          for_each_task:
+            inputs: '[{"session_id": "A"}, {"session_id": "B"}]'
+            concurrency: 2
+            task:
+              task_key: smoke_session
+              notebook_task:
+                notebook_path: ../src/notebooks/genie_task_placeholder.ipynb
+                base_parameters:
+                  automation: smoke
+                  session_id: "{{input.session_id}}"
+                  run_id: "{{job.run_id}}"

@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "description": "Example workspace-mode manifest: ML model training pipeline with no Git. Sessions create notebooks, run them, and produce model artifacts.",
+  "workflow": {
+    "mode": "workspace"
+  },
+  "bundle_root": "/Workspace/Users/you@example.com/ml-project",
+  "status_dir": ".build-status",
+  "plans_dir": "docs/plans",
+  "sessions_dir": "docs/sessions",
+  "context_files": [
+    "PROJECT_MEMORY.md",
+    "docs/data-dictionary.md"
+  ],
+  "waves": [
+    {
+      "wave_id": "0",
+      "name": "Data Preparation",
+      "concurrency": 1,
+      "gate": [
+        "Table catalog.schema.features has >0 rows",
+        "Table catalog.schema.train_set has >0 rows",
+        "Table catalog.schema.test_set has >0 rows"
+      ],
+      "sessions": [
+        {
+          "session_id": "01",
+          "title": "EDA and Feature Engineering",
+          "plan_file": "01_eda_features.md",
+          "mode": "execute",
+          "scope": "Create and run a notebook that explores the source data, engineers features, and writes train/test splits to Unity Catalog tables.",
+          "owned_assets": [
+            "catalog.schema.features",
+            "catalog.schema.train_set",
+            "catalog.schema.test_set"
+          ],
+          "depends_on": []
+        }
+      ]
+    },
+    {
+      "wave_id": "1",
+      "name": "Model Training",
+      "concurrency": 3,
+      "gate": [
+        "All sessions have status pass",
+        "At least one model logged to MLflow experiment with accuracy > 0.80"
+      ],
+      "sessions": [
+        {
+          "session_id": "02a",
+          "title": "Logistic Regression",
+          "plan_file": "02_model_training.md",
+          "mode": "execute",
+          "scope": "Train a logistic regression model on catalog.schema.train_set. Log to MLflow. Evaluate on test_set.",
+          "owned_assets": ["mlflow-experiment/logistic-regression"],
+          "depends_on": ["01"]
+        },
+        {
+          "session_id": "02b",
+          "title": "Random Forest",
+          "plan_file": "02_model_training.md",
+          "mode": "execute",
+          "scope": "Train a random forest model on catalog.schema.train_set. Log to MLflow. Evaluate on test_set.",
+          "owned_assets": ["mlflow-experiment/random-forest"],
+          "depends_on": ["01"]
+        },
+        {
+          "session_id": "02c",
+          "title": "XGBoost",
+          "plan_file": "02_model_training.md",
+          "mode": "execute",
+          "scope": "Train an XGBoost model on catalog.schema.train_set. Log to MLflow. Evaluate on test_set.",
+          "owned_assets": ["mlflow-experiment/xgboost"],
+          "depends_on": ["01"]
+        }
+      ]
+    },
+    {
+      "wave_id": "2",
+      "name": "Champion Selection and Registration",
+      "concurrency": 1,
+      "gate": [
+        "Model registered to Unity Catalog as catalog.schema.champion_model",
+        "Champion model alias 'production' assigned"
+      ],
+      "sessions": [
+        {
+          "session_id": "03",
+          "title": "Compare Models and Register Champion",
+          "plan_file": "03_champion_selection.md",
+          "mode": "execute",
+          "scope": "Compare all models from wave 1 in the MLflow experiment. Register the best performer to Unity Catalog. Set the 'production' alias.",
+          "owned_assets": ["catalog.schema.champion_model"],
+          "depends_on": ["02a", "02b", "02c"]
+        }
+      ]
+    }
+  ]
+}

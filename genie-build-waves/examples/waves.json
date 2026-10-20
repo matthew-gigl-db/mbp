@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "description": "Example git-mode manifest for building a DABs bundle. Copy and adapt for your project.",
+  "workflow": {
+    "mode": "git"
+  },
+  "repo_root": "/Workspace/Users/you@example.com/my-project",
+  "bundle_root": "/Workspace/Users/you@example.com/my-project/my-app",
+  "branch": "feature-genie-build",
+  "bundle_target": "dev",
+  "status_dir": ".build-status",
+  "plans_dir": "docs/plans",
+  "sessions_dir": "docs/sessions",
+  "context_files": [
+    "PROJECT_MEMORY.md"
+  ],
+  "waves": [
+    {
+      "wave_id": "0",
+      "name": "Foundation",
+      "concurrency": 1,
+      "manual_prereqs": [],
+      "gate": [
+        "bundle validate --strict --target dev passes"
+      ],
+      "sessions": [
+        {
+          "session_id": "01",
+          "title": "Bundle Scaffold",
+          "plan_file": "01_bundle_scaffold.md",
+          "scope": "All tasks in plan 01. Create the directory structure, fix databricks.yml targets, add include block.",
+          "owned_paths": ["databricks.yml", "resources/**", "src/**"],
+          "exclude_paths": [],
+          "allow_deploy": false,
+          "depends_on": []
+        }
+      ]
+    },
+    {
+      "wave_id": "1",
+      "name": "Parallel Foundations",
+      "concurrency": 3,
+      "manual_prereqs": [],
+      "gate": [
+        "All sessions have status pass",
+        "bundle validate --strict --target dev passes"
+      ],
+      "sessions": [
+        {
+          "session_id": "02",
+          "title": "Data Model",
+          "plan_file": "02_data_model.md",
+          "scope": "Create DDL notebook with all target tables. Do not deploy.",
+          "owned_paths": ["src/notebooks/target_tables_ddl.*"],
+          "exclude_paths": [],
+          "allow_deploy": false,
+          "depends_on": ["01"]
+        },
+        {
+          "session_id": "03",
+          "title": "Pipeline Code",
+          "plan_file": "03_pipeline.md",
+          "scope": "Author the SDP pipeline notebook. Code against table signatures from plan 02.",
+          "owned_paths": ["src/pipelines/**", "resources/pipeline.pipeline.yml"],
+          "exclude_paths": [],
+          "allow_deploy": false,
+          "depends_on": ["01"]
+        },
+        {
+          "session_id": "04",
+          "title": "Job Configuration",
+          "plan_file": "04_jobs.md",
+          "scope": "Create the orchestration job YAML with task dependencies.",
+          "owned_paths": ["resources/orchestration.job.yml"],
+          "exclude_paths": [],
+          "allow_deploy": false,
+          "depends_on": ["01"]
+        }
+      ]
+    }
+  ]
+}

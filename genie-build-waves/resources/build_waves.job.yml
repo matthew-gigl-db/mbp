@@ -1,0 +1,33 @@
+# resources/build_waves.job.yml
+# Main build waves job. Deployed with a single placeholder task; the setup notebook
+# dynamically generates the full wave task graph (for_each -> integrate -> gate per wave)
+# from waves.json and resets this job via jobs/reset.
+#
+# The bundle CLI has no genie_task schema, so this job starts as a notebook_task shell.
+# After every `bundle deploy`, re-run the setup job to restore the genie_tasks.
+
+resources:
+  jobs:
+    build_waves:
+      name: "${var.project_name}: Build Waves"
+      description: "Parallel Genie Code build waves, driven by waves.json. Patched by setup_build_waves."
+      max_concurrent_runs: 1
+      queue:
+        enabled: true
+      tags:
+        purpose: build-waves
+        managed_by: genie-build-waves
+      parameters:
+        - name: branch
+          default: ${var.build_branch}
+        - name: build_root
+          default: ${var.build_root}
+        - name: manifest_path
+          default: ${var.manifest_path}
+      tasks:
+        # Single placeholder — setup notebook replaces this with the full wave graph
+        - task_key: placeholder
+          notebook_task:
+            notebook_path: ../src/notebooks/genie_task_placeholder.ipynb
+            base_parameters:
+              automation: runner
