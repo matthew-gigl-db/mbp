@@ -37,6 +37,12 @@ variables:
   skills_schema:
     description: "UC schema for build skills"
 
+  # Whether the setup job should create the skills schema if it doesn't exist.
+  # Set to "false" if using an existing schema or if you lack CREATE SCHEMA permission.
+  create_skills_schema:
+    description: "Auto-create the skills schema (true/false)"
+    default: "true"
+
   # Skill identifiers — defaults work for most deployments.
   runner_skill_id:
     description: "UC Skill id for the session runner"
@@ -54,9 +60,9 @@ targets:
       host: https://fevm-hls-fde.cloud.databricks.com
     variables:
       # --- SET THESE FOR YOUR PROJECT ---
-      build_root: /Workspace/Users/matthew.giglia@databricks.com/example-project
+      build_root: /Workspace/Users/you@example.com/my-project
       build_branch: feature-genie-build
-      manifest_path: /Workspace/Users/matthew.giglia@databricks.com/example-project/docs/plans/waves.json
+      manifest_path: /Workspace/Users/you@example.com/my-project/docs/plans/waves.json
       skills_catalog: hls_fde_dev
       skills_schema: dev_matthew_giglia_build_waves
 

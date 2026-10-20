@@ -68,7 +68,7 @@ Genie Code will:
 
 If you've already written your plans and manifest and just need the bundle configured for your workspace:
 
-> Read `[/Workspace/Users/you@example.com/genie-build-waves]/README.md` and `[/Workspace/Users/you@example.com/genie-build-waves]/databricks.yml`. Update the `databricks.yml` target variables for my workspace. My project is at `[project workspace path]` on branch `[branch name]`. Use catalog `[catalog]` and schema `[schema]` for skills.
+> Read `[/Workspace/Users/you@example.com/genie-build-waves]/README.md` and `[/Workspace/Users/you@example.com/genie-build-waves]/databricks.yml`. Update the `databricks.yml` target variables for my workspace. My project is at `[project workspace path]` on branch `[branch name]`. Use catalog `[catalog]` and schema `[schema]` for skills. [Create the schema automatically / I already have this schema].
 
 ### The planner skill
 
@@ -108,6 +108,7 @@ targets:
       manifest_path: /Workspace/Users/you@example.com/my-project/my-app/docs/plans/waves.json
       skills_catalog: my_catalog
       skills_schema: my_schema
+      create_skills_schema: "true"   # set "false" if the schema already exists
 ```
 
 ### 3. Deploy and patch

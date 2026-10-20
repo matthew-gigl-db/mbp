@@ -168,11 +168,21 @@ targets:
       manifest_path: "<absolute path to waves.json>"
       skills_catalog: "<UC catalog for publishing skills>"
       skills_schema: "<UC schema for publishing skills>"
+      create_skills_schema: "true"  # or "false" to use an existing schema
 ```
+
+**Ask the user about the skills schema before proceeding:**
+
+> The build framework publishes two UC Skills (session runner and wave integrator) to a Unity Catalog schema. You have two options:
+>
+> 1. **Auto-create a new schema** (default, `create_skills_schema: "true"`): The setup job will create `<catalog>.<schema>` if it doesn't exist. You need CREATE SCHEMA permission on the catalog.
+> 2. **Use an existing schema** (`create_skills_schema: "false"`): Point `skills_catalog` and `skills_schema` at a schema you already have CREATE FUNCTION permission on.
+>
+> Which would you prefer? If you have an existing schema in mind, what's its name?
 
 To determine the current user and workspace:
 - Read `build_root` from the project's location in the workspace
-- For `skills_catalog`/`skills_schema`, use an existing catalog/schema the user has CREATE FUNCTION on, or ask
+- For `skills_catalog`/`skills_schema`, use an existing catalog/schema the user has CREATE FUNCTION on, or let the setup job create one
 - For `build_branch`, follow the project's branch naming convention
 
 For `workspace` mode projects, `build_branch` can be set to any non-main value (it's passed as a parameter but skipped by the runner/integrator).
