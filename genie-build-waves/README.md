@@ -67,13 +67,15 @@ Genie Code will:
 2. Analyze your project's files and structure
 3. Propose a wave/session decomposition
 4. Write the plan files, waves.json manifest, and plan index in your project
-5. Configure the bundle's `databricks.yml` for your workspace and project
+5. Deploy the bundle with `--var` flags (does not modify `databricks.yml` — the bundle stays generic)
 
-### Just configure the bundle
+### Deploy and run
 
-If you've already written your plans and manifest and just need the bundle configured for your workspace:
+If you've already written your plans and manifest and just need to deploy:
 
-> Read `[/Workspace/Users/you@example.com/genie-build-waves]/README.md` and `[/Workspace/Users/you@example.com/genie-build-waves]/databricks.yml`. Update the `databricks.yml` target variables for my workspace. My project is at `[project workspace path]` on branch `[branch name]`. Use catalog `[catalog]` and schema `[schema]` for skills. [Create the schema automatically / I already have this schema].
+> Read `[/Workspace/Users/you@example.com/genie-build-waves]/README.md`. Deploy the bundle using `--var` flags — do **not** edit `databricks.yml` (keep it generic so multiple projects can share the same bundle). My project is at `[project workspace path]` on branch `[branch name]`. Use catalog `[catalog]` and schema `[schema]` for skills. [Create the schema automatically / I already have this schema].
+
+**Important:** Always pass project-specific values as `--var` flags at deploy time. Never edit `databricks.yml` with project-specific values — the bundle is a shared tool, not a per-project config file.
 
 ### The planner skill
 
@@ -99,29 +101,25 @@ In your target project folder (Git folder for `git`/`hybrid` mode, any workspace
 4. Create a `docs/sessions/` directory for session summaries.
 5. For `git`/`hybrid` mode: add `.build-status/` to `.gitignore`.
 
-### 2. Configure this bundle
+### 2. Deploy with `--var` flags
 
-Set variables in `databricks.yml` targets (or pass `--var` at deploy time):
-
-```yaml
-targets:
-  dev:
-    variables:
-      project_name: "My App"
-      build_root: /Workspace/Users/you@example.com/my-project/my-app
-      build_branch: feature-genie-build
-      manifest_path: /Workspace/Users/you@example.com/my-project/my-app/docs/plans/waves.json
-      skills_catalog: my_catalog
-      skills_schema: my_schema
-      create_skills_schema: "true"   # set "false" if the schema already exists
-```
-
-### 3. Deploy and patch
+Pass all project-specific values at deploy time. Do **not** edit `databricks.yml` — keep the bundle generic so it can be shared across projects.
 
 ```bash
-databricks bundle deploy --target dev
-# Deploy creates jobs with placeholder tasks
+databricks bundle deploy --target dev \
+  --var="project_name=My App" \
+  --var="build_root=/Workspace/Users/you@example.com/my-project" \
+  --var="build_branch=feature-genie-build" \
+  --var="manifest_path=/Workspace/Users/you@example.com/my-project/docs/plans/waves.json" \
+  --var="skills_catalog=my_catalog" \
+  --var="skills_schema=my_schema"
+```
 
+Optional variables (with defaults): `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`.
+
+### 3. Run setup to patch jobs
+
+```bash
 # Run setup to patch placeholders into real Genie Code tasks:
 databricks bundle run setup_build_waves --target dev
 ```

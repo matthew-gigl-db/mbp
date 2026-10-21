@@ -1,6 +1,6 @@
 ---
 name: genie-build-planner
-description: Plans and configures a genie-build-waves project. Analyzes a Databricks project, decomposes it into dependency-ordered waves and sessions, writes plan files, creates the waves.json manifest, and configures databricks.yml. Use at the start of any project that will be built using the Genie Code Build Waves pattern.
+description: Plans and deploys a genie-build-waves project. Analyzes a Databricks project, decomposes it into dependency-ordered waves and sessions, writes plan files, creates the waves.json manifest, and deploys the bundle with --var flags. Use at the start of any project that will be built using the Genie Code Build Waves pattern.
 ---
 
 # Build Planner
@@ -154,36 +154,38 @@ Key decisions:
 - Set `concurrency` per wave (defaults to number of sessions; lower it if sessions compete for shared resources)
 - Write `gate` checks that the integrator can actually verify
 
-## Step 7: Configure databricks.yml
+## Step 7: Deploy the bundle with `--var` flags
 
-In the bundle's `databricks.yml` (in the `genie-build-waves/` repo, separate from the project), update the target variables:
+**Do NOT edit `databricks.yml` with project-specific values.** The bundle is a shared, reusable tool — keep it generic. Instead, pass all project-specific values as `--var` flags at deploy time:
 
-```yaml
-targets:
-  dev:
-    variables:
-      project_name: "<descriptive project name>"
-      build_root: "<absolute workspace path of the project being built>"
-      build_branch: "<feature branch name>"  # git/hybrid only
-      manifest_path: "<absolute path to waves.json>"
-      skills_catalog: "<UC catalog for publishing skills>"
-      skills_schema: "<UC schema for publishing skills>"
-      create_skills_schema: "true"  # or "false" to use an existing schema
+```bash
+databricks bundle deploy --target dev \
+  --var="project_name=<descriptive project name>" \
+  --var="build_root=<absolute workspace path of the project being built>" \
+  --var="build_branch=<feature branch name>" \
+  --var="manifest_path=<absolute path to waves.json>" \
+  --var="skills_catalog=<UC catalog for publishing skills>" \
+  --var="skills_schema=<UC schema for publishing skills>"
 ```
+
+This approach:
+- Keeps the bundle's `databricks.yml` clean with generic placeholders
+- Allows multiple projects to share the same bundle without Git changes
+- Makes it clear which values are project-specific vs. bundle defaults
 
 **Ask the user about the skills schema before proceeding:**
 
 > The build framework publishes two UC Skills (session runner and wave integrator) to a Unity Catalog schema. You have two options:
 >
 > 1. **Auto-create a new schema** (default, `create_skills_schema: "true"`): The setup job will create `<catalog>.<schema>` if it doesn't exist. You need CREATE SCHEMA permission on the catalog.
-> 2. **Use an existing schema** (`create_skills_schema: "false"`): Point `skills_catalog` and `skills_schema` at a schema you already have CREATE FUNCTION permission on.
+> 2. **Use an existing schema** (`create_skills_schema: "false"`): Point `skills_catalog` and `skills_schema` at a schema you already have CREATE FUNCTION permission on. Add `--var="create_skills_schema=false"` to your deploy command.
 >
 > Which would you prefer? If you have an existing schema in mind, what's its name?
 
-To determine the current user and workspace:
-- Read `build_root` from the project's location in the workspace
-- For `skills_catalog`/`skills_schema`, use an existing catalog/schema the user has CREATE FUNCTION on, or let the setup job create one
-- For `build_branch`, follow the project's branch naming convention
+To determine the values:
+- `build_root`: the project's absolute workspace path
+- `skills_catalog`/`skills_schema`: use an existing catalog/schema the user has CREATE FUNCTION on, or let the setup job create one
+- `build_branch`: follow the project's branch naming convention
 
 For `workspace` mode projects, `build_branch` can be set to any non-main value (it's passed as a parameter but skipped by the runner/integrator).
 
@@ -197,10 +199,16 @@ For `git`/`hybrid` mode, ensure `.build-status/` is in `.gitignore`.
 
 ## Step 9: Verify
 
-Run from the `genie-build-waves/` bundle directory (not the project directory):
+Validate from the `genie-build-waves/` bundle directory (not the project directory), passing the same `--var` flags:
 
 ```bash
-databricks bundle validate --strict --target dev
+databricks bundle validate --strict --target dev \
+  --var="project_name=..." \
+  --var="build_root=..." \
+  --var="build_branch=..." \
+  --var="manifest_path=..." \
+  --var="skills_catalog=..." \
+  --var="skills_schema=..."
 ```
 
 Then verify the manifest is valid JSON and all plan files referenced in it exist in the **project** directory.
