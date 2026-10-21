@@ -1,6 +1,7 @@
 # resources/build_waves_smoke.job.yml
 # Smoke test: a 2-item for_each of a no-op Genie Code task.
-# Pass = both iterations SUCCESS and each reply echoes its session_id (A, B).
+# The setup notebook injects a random nonce into the inputs. If the agent
+# echoes the correct nonce, we know {{input.*}} resolved in genie_task.parameters.
 # Patched into genie_tasks by the setup job (run with run_smoke=true to patch + run).
 
 resources:
@@ -15,7 +16,7 @@ resources:
       tasks:
         - task_key: smoke_sessions
           for_each_task:
-            inputs: '[{"session_id": "A"}, {"session_id": "B"}]'
+            inputs: '[{"session_id": "A", "nonce": "SETUP_PATCHES_THIS"}, {"session_id": "B", "nonce": "SETUP_PATCHES_THIS"}]'
             concurrency: 2
             task:
               task_key: smoke_session
@@ -24,4 +25,4 @@ resources:
                 base_parameters:
                   automation: smoke
                   session_id: "{{input.session_id}}"
-                  run_id: "{{job.run_id}}"
+                  nonce: "{{input.nonce}}"
