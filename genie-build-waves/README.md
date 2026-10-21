@@ -157,12 +157,41 @@ Run the build job from the Jobs UI. Set the `branch` parameter if not using the 
 1. Read the `wN_gate` output, `.build-status/<run_id>/wave_<N>_gate.json` and, for convergence waves, `wave_<N>_runtime.json` (deployment id, states, error samples, missing markers).
 2. Read the failing session's status file and summary in `docs/sessions/`.
 3. Passing sessions are already committed. Failing sessions' code is left uncommitted.
-4. Fix the cause (plan, manifest, or code), then **Repair run** selecting `wN_sessions`, `wN_integrate`, `wN_gate`, and `wN_gate_check`.
+4. Fix the cause (plan, manifest, or code), then repair the run (below).
 5. `requests` in the gate file list changes a session needed outside its owned paths. Apply them before repairing.
 
 Note: downstream waves show as **Excluded** (not failed). This is the correct cascade behavior — they never ran and consumed no compute.
 
-If the build job was redeployed and re-patched since the failed run, Jobs refuses to repair it ("job structure has changed"). Start a new run with `only` set to the failed wave's task keys and everything after it (earlier waves show as skipped).
+### Repairing a failed wave
+
+Once `wN_gate_check` has evaluated to `false`, every later wave is Excluded. Re-running only `wN_gate` does **not** re-evaluate `wN_gate_check`, so the Excluded waves stay excluded and the run stays terminated. Always repair with dependents:
+
+```python
+from databricks.sdk import WorkspaceClient
+
+w = WorkspaceClient()
+w.jobs.repair_run(
+    run_id=<failed_run_id>,
+    rerun_tasks=["wN_sessions", "wN_integrate", "wN_gate"],  # start of the failed wave
+    rerun_dependent_tasks=True,  # re-runs wN_gate_check and every later wave
+)
+```
+
+CLI equivalent: `databricks jobs repair-run <failed_run_id> --json '{"rerun_tasks": ["wN_sessions", "wN_integrate", "wN_gate"], "rerun_dependent_tasks": true}'`. If the run was already repaired once, also pass `latest_repair_id` (from `w.jobs.get_run(run_id, include_history=True).repair_history`). In the UI, choose **Repair run** and select the failed wave's tasks **and** everything after them, including each `wN_gate_check`.
+
+Which tasks to name in `rerun_tasks`:
+
+| What failed | `rerun_tasks` |
+|---|---|
+| A session (code, plan or manifest fixed) | `wN_sessions`, `wN_integrate`, `wN_gate` |
+| Only the integrator (sessions passed) | `wN_integrate`, `wN_gate` |
+| Only the gate verdict (e.g. stray files committed by hand, runtime soak) | `wN_gate` |
+
+Keep `rerun_dependent_tasks=True` in every case. Without it, nothing after the named tasks runs.
+
+**Transient agent start-up errors** (`INTERNAL_ERROR: start_agent_run`) are retried automatically: Genie Code tasks get `max_retries` (default 2, one minute apart, override with manifest `task_retries`). If a task still fails after its retries, repair as above; don't start a fresh run.
+
+**Fresh runs.** If the build job was redeployed and re-patched since the failed run, Jobs refuses to repair it ("job structure has changed"). Start a new run with `only` set to the failed wave's task keys and everything after it (earlier waves show as skipped). Files left in the working tree by the earlier run (uncommitted summaries, code from failed sessions) are reported by the integrator as `carryover_files`, not strays, so they no longer fail the new run's first gate. Summary carryover is committed; code carryover is left for the session that owns it. The last wave fails on any carryover code nobody claimed, so a human decides what to do with it.
 
 A convergence wave can commit (its session passed) and still fail on `runtime_gate` (e.g. the app crashed during the soak). The commit is kept as progress; repair re-runs the converge session, which starts from the committed code.
 

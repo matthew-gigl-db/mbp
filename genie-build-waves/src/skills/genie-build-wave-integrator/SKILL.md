@@ -55,9 +55,17 @@ If `workflow_mode` is `workspace`: **skip this step entirely.** There is no Git 
 Otherwise, use Git status (read-only) on `repo_root`. Every changed or untracked file under `build_root` must be one of:
 - in a session's `files_changed` and matching that session's `owned_paths` (and not its `exclude_paths`), or
 - a session summary named in a status file, or
-- under `status_dir` (never staged).
+- under `status_dir` (never staged), or
+- **carryover** left by an earlier run (see below).
 
 Anything else is a **stray**. Do not stage strays; list them in the gate file. Strays fail the gate. If a file is in a session's `files_changed` but outside its `owned_paths`, treat it as a stray too.
+
+**Carryover.** Failed or interrupted runs leave files behind: summaries an integrator never committed (it crashed or never started), and code from non-passing sessions that step 6 deliberately leaves uncommitted. A fresh run (new `run_id`) must not mistake these for strays. Classify a file that is not claimed by this run as carryover when one of these holds, checked in this order:
+1. `summary`: it is under `sessions_dir` and is named like a runner summary (`<YYYY-MM-DD>_w<wave>-<session_id>-<slug>.md`) for a session that exists in the manifest, or it is named as a summary in a status file under `status_dir/<other_run_id>/`.
+2. `prior_run_code`: it is in the `files_changed` of a status file under `status_dir/<other_run_id>/` and matches that session's `owned_paths`.
+3. `owned_by_later_wave`: it matches the `owned_paths` (and not the `exclude_paths`) of an `edit` or `converge` session in a wave that comes **after** this one in the manifest. That session will rewrite and claim it.
+
+Record each carryover file with its `kind` and the run id or session id that explains it. Carryover does not fail the gate, with one exception: in the manifest's **last** wave, any remaining `prior_run_code` or `owned_by_later_wave` file is unclaimed and fails the gate (`reason: "unclaimed carryover"`), so a human decides whether to keep or discard it. Never discard or revert carryover yourself.
 
 For `hybrid` mode: only `edit`- and `converge`-mode sessions produce files to check. Ignore `execute`/`configure` sessions in the stray analysis.
 
@@ -83,7 +91,7 @@ If `workflow_mode` is `workspace`: **skip this step.** Go directly to step 7.
 
 Otherwise:
 
-1. Stage, by explicit path: the `files_changed` of every `edit`- or `converge`-mode session with status `pass`, their summary files, the summary files of non-passing sessions, and `INDEX.md`. Do **not** stage code from sessions whose status is not `pass`; leave it in the working tree for the repair run. Do **not** stage anything from `execute`/`configure` sessions (they don't produce tracked files).
+1. Stage, by explicit path: the `files_changed` of every `edit`- or `converge`-mode session with status `pass`, their summary files, the summary files of non-passing sessions, every `summary` carryover file (add an `INDEX.md` line for any that is not listed yet), and `INDEX.md`. Do **not** stage `prior_run_code` or `owned_by_later_wave` carryover; the owning session claims it. Do **not** stage code from sessions whose status is not `pass`; leave it in the working tree for the repair run. Do **not** stage anything from `execute`/`configure` sessions (they don't produce tracked files).
 2. If anything is staged, commit with message:
    ```
    wave(<wave>): <comma-separated session ids that passed>
@@ -91,6 +99,7 @@ Otherwise:
    Automated wave integration (job run <run_id>).
    Sessions: <id>=<status>, ...
    Gate: <pass|fail> (<n> checks, <m> skipped)
+   Carryover: <k> summaries staged, <j> code files left for their owners
    ```
    then push the `branch` parameter. Record the commit SHA.
 3. If nothing is staged, skip the commit and note it.
@@ -109,6 +118,7 @@ Path: `build_root/<status_dir>/<run_id>/wave_<wave>_gate.json`:
   "manual_prereqs": {"02": "done | missing"},
   "checks": [{"name": "bundle validate --strict", "result": "pass", "detail": ""}],
   "stray_files": [],
+  "carryover_files": [{"path": "docs/sessions/2026-10-20_w3-09-routes.md", "kind": "summary | prior_run_code | owned_by_later_wave", "source": "run 376065156883918 / session 09", "staged": true}],
   "requests": [{"from": "07", "path": "package.json", "change": "..."}],
   "suppressions": [{"from": "14", "path": "tsconfig.server.json", "kind": "compile-exclude", "why": "..."}],
   "commit_sha": "abc1234 or empty",
@@ -116,8 +126,8 @@ Path: `build_root/<status_dir>/<run_id>/wave_<wave>_gate.json`:
 }
 ```
 
-`status` is `pass` only if every session is `pass`, every manual prereq is `done`, no check `fail`ed and there are no strays (in `git`/`hybrid` mode). Copy every session's `suppressions` into the gate file so a human can review them. Your `pass` is necessary but not sufficient when the wave has a `runtime_gate`: the gate notebook adds its own runtime verdict. The next job task reads this file and stops the run on `fail`, so write it even when you hit an error (use `status: "fail"` and put the error in `reason`).
+`status` is `pass` only if every session is `pass`, every manual prereq is `done`, no check `fail`ed and there are no strays and, in the last wave, no unclaimed carryover (in `git`/`hybrid` mode). Copy every session's `suppressions` into the gate file so a human can review them. Your `pass` is necessary but not sufficient when the wave has a `runtime_gate`: the gate notebook adds its own runtime verdict. The next job task reads this file and stops the run on `fail`, so write it even when you hit an error (use `status: "fail"` and put the error in `reason`).
 
 ### 8. Final response
 
-At most 6 lines: wave, workflow mode, gate status, per-session status, commit SHA (or "n/a" for workspace), skipped checks, suppressions count, and any `requests` the next wave or the user must act on.
+At most 6 lines: wave, workflow mode, gate status, per-session status, commit SHA (or "n/a" for workspace), skipped checks, suppressions count, carryover count, and any `requests` the next wave or the user must act on.

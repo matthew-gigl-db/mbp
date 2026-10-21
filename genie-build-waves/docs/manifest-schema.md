@@ -41,6 +41,7 @@ The manifest supports three workflow modes that control how sessions operate and
 | `sessions_dir` | string | Yes | Directory for session summaries, relative to `build_root`. Convention: `docs/sessions`. |
 | `context_files` | string[] | No | Extra files (relative to `build_root`) for sessions to read before working. Project memory, coding standards, architecture docs, data dictionaries, model cards. |
 | `skills` | object | No | Overrides for skill locations. See Skills section. |
+| `task_retries` | object | No | Automatic retries for Genie Code tasks (sessions and integrators), for transient agent start-up errors such as `INTERNAL_ERROR: start_agent_run`. Keys: `max_retries` (default `2`; `0` disables), `min_retry_interval_seconds` (default `60`). Timeouts are never retried. Gate notebooks are not retried. |
 | `runtime_targets` | map<string, RuntimeTarget> | No | Deployable things (apps, jobs, pipelines) that `converge` sessions deploy and `runtime_gate` checks. Keyed by a short target name. See RuntimeTarget. |
 | `waves` | Wave[] | Yes | Ordered list of waves. Executed sequentially; sessions within a wave run in parallel. |
 

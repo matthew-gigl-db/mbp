@@ -65,6 +65,8 @@ Determine your effective mode:
 
 If the session is not found, stop with `status: "error"`.
 
+**Task retries.** The job retries a Genie Code task automatically when the agent fails to start or crashes (`max_retries` on the job task). If your status file for this `run_id` or a summary for your session from today already exists, you are a retry: read them and the current state of your `owned_paths` / `owned_assets`, and continue from where the previous attempt stopped (keep finished work). In steps 6-7, update that same summary and status file so they describe the combined result of all attempts.
+
 ### 2. Check the branch (git/hybrid only)
 
 If `workflow_mode` is `git` or `hybrid`:
@@ -106,7 +108,7 @@ Based on your `session_mode`:
 
 **`converge` mode** — a bounded loop. For attempt `n = 1 .. max_attempts`:
 
-1. **Deploy.** For each of your `runtime_targets`, run its `deploy_commands` with the Databricks CLI from its `bundle_root` (default for apps: `bundle deploy --target <t>` then `bundle run <resource_key> --target <t>`). If a command itself fails (validation, permissions, resource conflict), that is the attempt's error.
+1. **Deploy.** First re-check the branch (step 2). If the Git folder is no longer on `branch` (it was switched mid-run), stop with `status: "error"` and say so; never deploy code from another branch. Then, for each of your `runtime_targets`, run its `deploy_commands` with the Databricks CLI from its `bundle_root` (default for apps: `bundle deploy --target <t>` then `bundle run <resource_key> --target <t>`). If a command itself fails (validation, permissions, resource conflict), that is the attempt's error.
 2. **Wait for a terminal state.** Apps: poll the app (SDK `w.apps.get(name)` or CLI `apps get <name>`) until `active_deployment` / `pending_deployment` is no longer `IN_PROGRESS`, then until `app_status` leaves `DEPLOYING`/`STARTING`. Jobs: wait for the triggered run to terminate. Pipelines: wait for the update to reach `COMPLETED`/`FAILED` (or a few minutes of `RUNNING` for continuous).
 3. **Diagnose.** Collect evidence for *this* attempt only:
    - Apps: deployment status message, and the target's `telemetry.logs_table` filtered to the new deployment id (`attributes:['app.deployment_id']::string = '<id>'`, attribute key from `telemetry.deployment_id_attribute`). Build errors usually have `severity_text = 'UNKNOWN'`, so match `body::string` against `telemetry.error_patterns` (default `error TS\d+`, `ELIFECYCLE`, `Error building app`, `Unhandled`, `FATAL`) as well as `severity_text IN ('ERROR','FATAL')`, excluding `ignore_patterns`. Look at `BUILD` lines first, then runtime lines.
