@@ -657,6 +657,11 @@
       margin-left: auto;
       margin-right: auto;
       opacity: 0.9;
+      transition: filter 0.2s ease, opacity 0.2s ease;
+    }
+    .arch-box:hover .box-logo {
+      filter: drop-shadow(0 0 6px rgba(255, 54, 33, 0.55));
+      opacity: 1;
     }
 
     /* ── Responsive ──────────────────────────────────────── */
@@ -899,7 +904,7 @@
           <p>Sessions run on serverless compute — no cluster provisioning, no cold starts. Genie Code executes SQL, Python, and shell directly. The build framework leverages this for <code>execute</code> and <code>configure</code> sessions that create resources as part of the build.</p>
         </div>
         <div class="card">
-          <img class="product-logo-inline" src="https://cdn.bfldr.com/9AYANS2F/at/v2j43tgzpgm8k82kvs59cf/unity-catalog-lockup-no-db-full-color-container.svg" alt="Unity Catalog">
+          <img class="product-logo-inline" src="https://cdn.bfldr.com/9AYANS2F/at/w3cnsfmjmmsg4mmjssq29gq/unity-catalog-lockup-no-db-full-color.svg" alt="Unity Catalog">
           <h3>Skills as reusable prompts</h3>
           <p>The bundle publishes two UC Skills — a session runner and a wave integrator — that provide structured prompts for each Genie Code task. Skills are versioned, stored in Unity Catalog, and invoked by the job's <code>genie_task</code> entries. Change a skill and re-run setup; every session picks up the new prompt.</p>
         </div>
