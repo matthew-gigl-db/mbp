@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "description": "Follow-up build for an AppKit app after the initial parallel build (waves 0-4, omitted here). Wave 5 fixes known compile errors in parallel; waves 6-7 converge sequentially until the app and its post-deploy job are stable.",
+  "workflow": {"mode": "git"},
+  "repo_root": "/Workspace/Users/you@example.com/my-repo",
+  "bundle_root": "/Workspace/Users/you@example.com/my-repo/my-app",
+  "branch": "yi-genie-app-converge",
+  "bundle_target": "dev",
+  "status_dir": ".build-status",
+  "plans_dir": "docs/plans",
+  "sessions_dir": "docs/sessions",
+  "context_files": ["PROJECT_MEMORY.md", "docs/plans/INDEX.md"],
+
+  "runtime_targets": {
+    "app": {
+      "type": "app",
+      "name": "my-app-dev",
+      "resource_key": "my_app",
+      "bundle_target": "dev",
+      "deploy_commands": [
+        "bundle deploy --target dev",
+        "bundle run my_app --target dev"
+      ],
+      "telemetry": {
+        "logs_table": "my_catalog.my_schema.my_app_otel_logs",
+        "deployment_id_attribute": "app.deployment_id",
+        "log_source_attribute": "app.log_source",
+        "error_patterns": ["error TS\\d+", "ELIFECYCLE", "Error building app", "Unhandled", "FATAL"],
+        "ignore_patterns": ["Updated file:", "Skipping query type generation"],
+        "required_markers": ["listening on"]
+      },
+      "stability": {"soak_minutes": 10, "max_errors": 0}
+    },
+    "post_deploy_job": {
+      "type": "job",
+      "name": "[dev your_name] My App: Post-deploy Setup",
+      "resource_key": "post_deploy_setup",
+      "deploy_commands": [
+        "bundle deploy --target dev",
+        "bundle run post_deploy_setup --target dev"
+      ],
+      "stability": {"soak_minutes": 20}
+    }
+  },
+
+  "waves": [
+    {
+      "wave_id": "5",
+      "name": "Known compile fixes (parallel, static gate)",
+      "gate": [
+        "bundle validate --strict --target dev passes",
+        "No file outside each session's owned_paths changed"
+      ],
+      "sessions": [
+        {
+          "session_id": "14",
+          "title": "Fix type errors in paper engine and routes",
+          "plan_file": "14_fix_paper_engine_types.md",
+          "mode": "edit",
+          "scope": "Fix the TS2554/TS2345/TS2365/TS18047 errors listed in the plan's Known issues. No suppressions.",
+          "owned_paths": ["server/services/paper-engine.ts", "server/routes/paper/**"],
+          "context_notes": "From the interactive session: errors seen in deployment 01f1... BUILD logs; re-verify line numbers against the current code."
+        },
+        {
+          "session_id": "15",
+          "title": "Type external API responses",
+          "plan_file": "15_type_external_api_responses.md",
+          "mode": "edit",
+          "scope": "Replace untyped `unknown` response handling with validated types in the market data services.",
+          "owned_paths": ["server/services/*-service.ts"],
+          "exclude_paths": ["server/services/paper-engine.ts"]
+        }
+      ]
+    },
+    {
+      "wave_id": "6",
+      "name": "Converge: app builds, starts and stays up",
+      "gate": [
+        "bundle validate --strict --target dev passes",
+        "Session 16 status is pass with a final attempt classified stable"
+      ],
+      "runtime_gate": ["app"],
+      "sessions": [
+        {
+          "session_id": "16",
+          "title": "Deploy app, read OTel logs, fix until stable",
+          "plan_file": "16_converge_app.md",
+          "mode": "converge",
+          "scope": "Deploy the app to dev, diagnose deployment status and OTel logs for the new deployment, fix the code and config within owned_paths, and repeat until the app is RUNNING with no error log lines and the startup marker present.",
+          "runtime_targets": ["app"],
+          "owned_paths": ["server/**", "client/**", "shared/**", "package.json", "pnpm-lock.yaml", "tsconfig*.json", "app.yaml", "resources/apps/**"],
+          "max_attempts": 6,
+          "timeout_minutes": 180,
+          "depends_on": ["14", "15"]
+        }
+      ]
+    },
+    {
+      "wave_id": "7",
+      "name": "Converge: post-deploy job succeeds against the running app",
+      "gate": ["bundle validate --strict --target dev passes"],
+      "runtime_gate": ["post_deploy_job", "app"],
+      "sessions": [
+        {
+          "session_id": "17",
+          "title": "Run post-deploy setup job, fix until it succeeds",
+          "plan_file": "17_converge_post_deploy_job.md",
+          "mode": "converge",
+          "scope": "Run the post-deploy setup job, diagnose failures from the run output, fix within owned_paths, and repeat until it succeeds. The app must still be stable afterwards.",
+          "runtime_targets": ["post_deploy_job", "app"],
+          "owned_paths": ["resources/jobs/post_deploy_setup.job.yml", "src/setup/**"],
+          "max_attempts": 4,
+          "timeout_minutes": 120,
+          "depends_on": ["16"]
+        }
+      ]
+    }
+  ]
+}

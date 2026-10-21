@@ -33,18 +33,29 @@ Each wave follows a four-phase pattern:
 3. **Gate notebook** (`run_if: ALL_DONE`) — Reads the integrator's gate JSON and every session's status file independently. Sets a `gate_passed` task value (`true`/`false`).
 4. **Gate check** (If/else condition task) — Checks `gate_passed == "true"`. If false, all downstream wave tasks are **Excluded** — zero compute on cascade failure.
 
+## Initial builds and follow-up builds
+
+| Phase | Waves | Sessions | Gate | Pass means |
+|---|---|---|---|---|
+| **Initial build** | Wide, parallel | `edit` / `execute` / `configure`, disjoint ownership | Static (validate, files, tables) | The pieces exist |
+| **Follow-up (convergence)** | Sequential, one session each | `converge`: deploy, read telemetry, fix, redeploy | Static + deterministic `runtime_gate` | It deploys, runs, stays up, logs are clean |
+
+A follow-up appends waves to the same `waves.json`. Optionally start with a parallel `edit` wave for known, file-disjoint errors; then add one `converge` wave per deployable thing, in dependency order. Each `converge` session gets `runtime_targets` (how to deploy it, where its OTel logs land, what "stable" means) and loops up to `max_attempts`. The gate notebook then checks the target itself: deployment succeeded during this run, `RUNNING`, unchanged through a soak window, no error lines for that deployment, startup markers present. **A passing stable build is part of the pass criteria.**
+
+Deploys are single-writer: the setup job rejects any wave where a deploying session (`converge` or `allow_deploy`) shares the wave with another session. See `examples/converge-waves.json`.
+
 ## Architecture
 
 | Component | Path | Purpose |
 |---|---|---|
 | Session Runner skill | `src/skills/genie-build-session-runner/SKILL.md` | Prompt for one session: load manifest, read plan, implement within owned paths, validate, write status JSON |
 | Wave Integrator skill | `src/skills/genie-build-wave-integrator/SKILL.md` | Prompt for per-wave integration: collect status, check strays, commit+push, write gate JSON |
-| Gate check notebook | `src/notebooks/wave_gate_check.ipynb` | Deterministic stop: reads gate + status files, raises unless all pass |
+| Gate check notebook | `src/notebooks/wave_gate_check.ipynb` | Deterministic stop: reads gate + status files; for `runtime_gate` waves also checks app/job/pipeline state, soak stability and OTel error lines itself |
 | Placeholder notebook | `src/notebooks/genie_task_placeholder.ipynb` | Stand-in for `genie_task` (bundle CLI has no schema); fails loud if run |
-| Setup notebook | `src/notebooks/setup_build_waves_job.ipynb` | Publishes skills, creates automations, dynamically generates task graph from manifest, resets jobs |
+| Setup notebook | `src/notebooks/setup_build_waves_job.ipynb` | Validates the manifest, publishes skills, creates/reuses automations, generates the task graph (with per-task timeouts) from the manifest, resets jobs |
 | Build job YAML | `resources/build_waves.job.yml` | Shell job (one placeholder); setup notebook replaces with full wave graph |
 | Setup job YAML | `resources/setup_build_waves.job.yml` | Runs setup notebook after every deploy |
-| Smoke job YAML | `resources/build_waves_smoke.job.yml` | 2-item `for_each` to verify Genie Code tasks work in job context |
+| Smoke job YAML | `resources/build_waves_smoke.job.yml` | 2-item `for_each` nonce echo plus a read-only `capability_probe` (CLI, apps/jobs read, SQL, telemetry) for converge sessions |
 
 ## Getting started with Genie Code
 
@@ -108,6 +119,7 @@ Pass all project-specific values at deploy time. Do **not** edit `databricks.yml
 ```bash
 databricks bundle deploy --target dev \
   --var="project_name=My App" \
+  --var="instance_suffix=-my-app" \
   --var="build_root=/Workspace/Users/you@example.com/my-project" \
   --var="build_branch=feature-genie-build" \
   --var="manifest_path=/Workspace/Users/you@example.com/my-project/docs/plans/waves.json" \
@@ -115,7 +127,9 @@ databricks bundle deploy --target dev \
   --var="skills_schema=my_schema"
 ```
 
-Optional variables (with defaults): `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`.
+Optional variables (with defaults): `instance_suffix` (`""`), `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`.
+
+**One deployment per project.** `instance_suffix` is appended to the bundle root path (`.bundle/genie-build-waves<suffix>/<target>`), so each project gets its own deployment state and its own build, setup and smoke jobs. Use the same suffix every time you deploy or validate for a project. Without it, deploying for a second project replaces the first project's jobs.
 
 ### 3. Run setup to patch jobs
 
@@ -132,7 +146,7 @@ Run setup with `run_smoke=true` to verify Genie Code tasks work inside `for_each
 databricks bundle run setup_build_waves --target dev -p run_smoke=true
 ```
 
-Pass = both iterations SUCCESS, each echoing its `session_id`.
+Pass = both iterations SUCCESS, each echoing its `session_id` and the nonce. Before a follow-up build, also read the `capability_probe` output: every check should be `ok` (and `deploy_permitted=yes`), otherwise `converge` sessions cannot work unattended.
 
 ### 5. Start the build
 
@@ -140,13 +154,17 @@ Run the build job from the Jobs UI. Set the `branch` parameter if not using the 
 
 ## When a wave fails
 
-1. Read the `wN_gate` output and `.build-status/<run_id>/wave_<N>_gate.json`.
+1. Read the `wN_gate` output, `.build-status/<run_id>/wave_<N>_gate.json` and, for convergence waves, `wave_<N>_runtime.json` (deployment id, states, error samples, missing markers).
 2. Read the failing session's status file and summary in `docs/sessions/`.
 3. Passing sessions are already committed. Failing sessions' code is left uncommitted.
 4. Fix the cause (plan, manifest, or code), then **Repair run** selecting `wN_sessions`, `wN_integrate`, `wN_gate`, and `wN_gate_check`.
 5. `requests` in the gate file list changes a session needed outside its owned paths. Apply them before repairing.
 
 Note: downstream waves show as **Excluded** (not failed). This is the correct cascade behavior — they never ran and consumed no compute.
+
+If the build job was redeployed and re-patched since the failed run, Jobs refuses to repair it ("job structure has changed"). Start a new run with `only` set to the failed wave's task keys and everything after it (earlier waves show as skipped).
+
+A convergence wave can commit (its session passed) and still fail on `runtime_gate` (e.g. the app crashed during the soak). The commit is kept as progress; repair re-runs the converge session, which starts from the committed code.
 
 ## Changing a build
 
@@ -179,7 +197,9 @@ Sessions also have **modes** (`edit`, `execute`, `configure`) that control what 
 * In `git`/`hybrid` mode: sessions never run Git write commands; only the integrator commits.
 * `main`/`master` are refused as branch targets.
 * `edit` sessions touch only their `owned_paths`; `execute`/`configure` sessions touch only their `owned_assets`.
-* Deploys only where `allow_deploy: true`.
+* Deploys only where `allow_deploy: true` or in `converge` sessions, only to their declared targets, and only one deploying session per wave.
+* `converge` sessions must fix causes, not hide them; any suppression (test skip, compile exclude, `@ts-ignore`, swallowed errors) must be listed in the status file and is surfaced in the gate output.
+* Never put the build-waves job in the bundle a `converge` session deploys — the deploy would reset the running build job.
 * Notebook/SQL execution only where `allow_execute: true` (default for `execute`/`configure` sessions).
 * `.build-status/` is never committed.
 

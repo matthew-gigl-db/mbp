@@ -4,6 +4,7 @@
 
 | Session | Summary |
 |---|---|
+| [converge-mode-runtime-gate](2026-10-21_converge-mode-runtime-gate.md) | Follow-up builds: sequential `converge` sessions (deploy, read OTel logs, fix, redeploy) plus a deterministic `runtime_gate` in the gate notebook, so a passing stable build is part of the pass criteria. Manifest validation (single-writer deploys), per-task timeouts, capability probe, automation leak fix, `instance_suffix` for one deployment per project. |
 | [param-placeholder-fix](2026-10-21_param-placeholder-fix.md) | Root cause: automation `user_prompt` must contain `{{param}}` placeholders for Genie Code runtime substitution. Without them, agents never see resolved parameter values. Also: nonce-based smoke test for verifying the full `{{input.*}}` → `parameters` → `{{param}}` chain. |
 | [if-else-cascade-and-deploy-pattern](2026-10-21_if-else-cascade-and-deploy-pattern.md) | Replaced raise-on-failure with If/else condition tasks for zero-compute cascade. Researched all six `run_if` options. Added `outcome: "true"` for condition task dependencies. Adopted `--var` deploy pattern. Enriched `for_each` inputs with session titles. |
 

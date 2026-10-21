@@ -1,11 +1,11 @@
 ---
 name: genie-build-session-runner
-description: Runs one session of a project as an unattended Genie Code job task inside a for_each wave. Reads the session definition from a waves.json manifest, executes the referenced plan (editing files, running notebooks, configuring resources, or any combination), validates, and writes a machine-readable status file. Supports git, workspace, and hybrid workflow modes. Use when a job task passes session_id, wave, run_id, branch, build_root and manifest_path.
+description: Runs one session of a project as an unattended Genie Code job task inside a for_each wave. Reads the session definition from a waves.json manifest, executes the referenced plan (editing files, running notebooks, configuring resources, or deploy-diagnose-fix convergence loops against a deployed app/job/pipeline), validates, and writes a machine-readable status file. Supports git, workspace, and hybrid workflow modes. Use when a job task passes session_id, wave, run_id, branch, build_root and manifest_path.
 ---
 
 # Session Runner
 
-You are one of several Genie Code sessions running **in parallel** on the same project. You run unattended with auto-approve, so the guardrails below are hard rules, not suggestions. Your job: complete exactly one session plan, within your ownership boundaries, then report.
+You are one of several Genie Code sessions running **in parallel** on the same project (or, for a `converge` session, the only session in a sequential convergence wave). You run unattended with auto-approve, so the guardrails below are hard rules, not suggestions. Your job: complete exactly one session plan, within your ownership boundaries, then report.
 
 ## Inputs (from the job task parameters)
 
@@ -41,11 +41,13 @@ Guardrails 1–3 apply based on the **workflow mode** (from `manifest.workflow.m
 7. **`edit` mode (default):** Create, edit or delete files only if they match your session's `owned_paths` and do not match `exclude_paths` (globs relative to `build_root`). The two exceptions are your summary and status files (steps 6-7). Changes outside your paths go to `requests` in your status file.
 8. **`execute` mode:** Run notebooks, SQL queries, SDK calls, or CLI commands as described in your plan. You may create output artifacts (tables, model versions, dashboard widgets) listed in `owned_assets`. Do not edit project source files unless they are also in your `owned_paths`.
 9. **`configure` mode:** Configure Databricks resources (jobs, pipelines, endpoints, permissions, secrets) as described in your plan. Resources you modify should be listed in `owned_assets`.
+10. **`converge` mode:** Same file ownership as `edit` (`owned_paths` enforced). In addition you may deploy and run **only** the `runtime_targets` named on your session, using each target's `bundle_root`, `bundle_target` and `deploy_commands`. You are the only session in your wave, so nobody else is editing the working tree while you deploy.
 
 ### Deploy and execute guardrails
 
-10. **Deploys.** Only if your session has `allow_deploy: true`, and only with the target specified in `bundle_target`. Never deploy or destroy anything on a target not listed. Never run `bundle destroy`.
-11. **Execution.** Only if your session has `allow_execute: true` (default for `execute`/`configure` modes, false for `edit` mode). When executing notebooks or SQL, do not modify objects outside your `owned_assets`.
+11. **Deploys.** Only if your session has `allow_deploy: true` or is `converge` mode, and only with the target specified in `bundle_target` (or the runtime target's `bundle_target`). Never deploy or destroy anything on a target not listed. Never run `bundle destroy`, never delete or recreate an app, job or pipeline, and never rename a runtime target.
+12. **Execution.** Only if your session has `allow_execute: true` (default for `execute`/`configure`/`converge` modes, false for `edit` mode). When executing notebooks or SQL, do not modify objects outside your `owned_assets` / `runtime_targets`.
+13. **Fix causes, not symptoms.** Never make a build or gate pass by hiding the problem: deleting or skipping tests, excluding source files from compilation, blanket `any` / `@ts-ignore` / `# type: ignore` / lint-disable, swallowing exceptions at startup, or turning features off with flags. If a suppression is genuinely the right call (e.g. test files should not be in the production compile), make it narrowly and record it under `suppressions` in your status file with the reason. Unrecorded suppressions are a guardrail violation.
 
 ## Steps
 
@@ -53,9 +55,9 @@ Guardrails 1–3 apply based on the **workflow mode** (from `manifest.workflow.m
 
 Read `manifest_path`. Find the wave whose `wave_id` equals `wave` and, inside it, the session whose `session_id` equals `session_id`.
 
-Keep from the session: `title`, `plan_file`, `scope`, `mode` (default `edit`), `owned_paths`, `owned_assets`, `exclude_paths`, `allow_deploy`, `allow_execute`, `depends_on`.
+Keep from the session: `title`, `plan_file`, `scope`, `mode` (default `edit`), `owned_paths`, `owned_assets`, `exclude_paths`, `allow_deploy`, `allow_execute`, `depends_on`, `runtime_targets`, `max_attempts` (default 5), `context_notes`.
 
-Keep from the manifest top level: `workflow` (default `{"mode": "git"}`), `bundle_target`, `status_dir`, `plans_dir`, `sessions_dir`, `repo_root` (default: `build_root`), `context_files`.
+Keep from the manifest top level: `workflow` (default `{"mode": "git"}`), `bundle_target`, `status_dir`, `plans_dir`, `sessions_dir`, `repo_root` (default: `build_root`), `context_files`, and the `runtime_targets` definitions named by your session.
 
 Determine your effective mode:
 - `workflow_mode` = `manifest.workflow.mode` or `"git"`
@@ -81,6 +83,8 @@ If `workflow_mode` is `workspace`: skip this step entirely.
 
 If the manifest contains a `context_files` list, read those too — they provide project-specific conventions, coding standards, data dictionaries, or architectural decisions.
 
+If the session has `context_notes`, treat them as a hand-over from an interactive Genie Code session (known errors, log excerpts, decisions already made). Verify them against the current code and telemetry before relying on them; they may be stale.
+
 ### 4. Do the work
 
 Based on your `session_mode`:
@@ -100,6 +104,23 @@ Based on your `session_mode`:
 - Verify each resource reached its expected state.
 - Record resource ids, endpoints, or URIs in your session summary for downstream sessions.
 
+**`converge` mode** — a bounded loop. For attempt `n = 1 .. max_attempts`:
+
+1. **Deploy.** For each of your `runtime_targets`, run its `deploy_commands` with the Databricks CLI from its `bundle_root` (default for apps: `bundle deploy --target <t>` then `bundle run <resource_key> --target <t>`). If a command itself fails (validation, permissions, resource conflict), that is the attempt's error.
+2. **Wait for a terminal state.** Apps: poll the app (SDK `w.apps.get(name)` or CLI `apps get <name>`) until `active_deployment` / `pending_deployment` is no longer `IN_PROGRESS`, then until `app_status` leaves `DEPLOYING`/`STARTING`. Jobs: wait for the triggered run to terminate. Pipelines: wait for the update to reach `COMPLETED`/`FAILED` (or a few minutes of `RUNNING` for continuous).
+3. **Diagnose.** Collect evidence for *this* attempt only:
+   - Apps: deployment status message, and the target's `telemetry.logs_table` filtered to the new deployment id (`attributes:['app.deployment_id']::string = '<id>'`, attribute key from `telemetry.deployment_id_attribute`). Build errors usually have `severity_text = 'UNKNOWN'`, so match `body::string` against `telemetry.error_patterns` (default `error TS\d+`, `ELIFECYCLE`, `Error building app`, `Unhandled`, `FATAL`) as well as `severity_text IN ('ERROR','FATAL')`, excluding `ignore_patterns`. Look at `BUILD` lines first, then runtime lines.
+   - Jobs: the run's task error and output. Pipelines: the update's event log errors.
+4. **Classify** the attempt: `deploy_failed`, `build_failed`, `crashed` (app starts then goes `CRASHED`/`UNAVAILABLE`), `unhealthy` (running but error lines or missing `required_markers`), or `stable`.
+5. **Stop or fix.**
+   - `stable`: confirm it holds for a short self-soak (about 3 minutes, same deployment id, still `RUNNING`, no new error lines), then leave the loop. The gate notebook runs the real soak.
+   - Root cause inside your `owned_paths`: fix it (all errors you can see, not one at a time), then go to the next attempt.
+   - Root cause outside your `owned_paths` (another bundle, a missing secret, infra, permissions): do not work around it. Record a `request` and stop with `status: "blocked"`.
+   - Same errors two attempts in a row with no progress: stop with `status: "fail"`.
+6. **Record** each attempt in `attempts` (status file, step 7): deployment/run/update id, classification, the distinct errors (short, de-duplicated), the fix applied and the files touched.
+
+Stop early if fewer than ~15 minutes remain before the task timeout, so you still write the summary and status file.
+
 **All modes:** Follow any project-specific conventions found in `context_files` or `PROJECT_MEMORY.md`.
 
 ### 5. Validate
@@ -109,6 +130,7 @@ Run every acceptance-criteria check from your plan. Typical checks by mode:
 **`edit`:** `bundle validate --strict --target <bundle_target>` if you touched YAML. Language-specific checks (typecheck, lint, test) if available.
 **`execute`:** Verify outputs exist and pass quality checks (row counts, schema matches, metric thresholds).
 **`configure`:** Verify resources are in expected state (running, active, accessible).
+**`converge`:** The last attempt is classified `stable` for every runtime target, plus `bundle validate --strict` for each target's bundle. `status: "pass"` requires both. A deploy that succeeded earlier but not on the final code does not count.
 
 Deploy-time checks only when `allow_deploy` is true. A check you did not run does not count as passed.
 
@@ -125,7 +147,7 @@ Path: `build_root/<status_dir>/<run_id>/<session_id>.json`. Exactly this shape:
   "session_id": "03",
   "wave": "1",
   "run_id": "123456",
-  "mode": "edit | execute | configure",
+  "mode": "edit | execute | configure | converge",
   "status": "pass | fail | blocked | error",
   "summary_file": "docs/sessions/2026-10-21_w1-03-lakebase-migrations.md",
   "files_changed": ["server/migrations/migrate.ts"],
@@ -133,9 +155,14 @@ Path: `build_root/<status_dir>/<run_id>/<session_id>.json`. Exactly this shape:
   "checks": [{"name": "bundle validate --strict", "result": "pass | fail | skipped", "detail": ""}],
   "assumptions": [],
   "requests": [{"path": "package.json", "change": "add dependency x@1.2", "why": ""}],
+  "suppressions": [{"path": "tsconfig.server.json", "kind": "compile-exclude | ts-ignore | lint-disable | test-skip | catch-swallow | feature-flag | other", "why": ""}],
+  "attempts": [{"n": 1, "target": "app", "deployment_id": "", "result": "deploy_failed | build_failed | crashed | unhealthy | stable", "errors": ["server/x.ts(12,3): TS2345 ..."], "fix": "", "files_changed": []}],
+  "runtime": {"app": {"deployment_id": "", "state": "RUNNING"}},
   "blocking": ""
 }
 ```
+
+`suppressions`, `attempts` and `runtime` are required for `converge` sessions (use empty values when not applicable) and optional otherwise.
 
 `status` is `pass` only if the scope is complete and no check failed. `files_changed` lists files created/edited/deleted (relative to `build_root`). `assets_changed` lists non-file assets created or modified (tables, notebooks, resources). Both exclude the summary and status files.
 

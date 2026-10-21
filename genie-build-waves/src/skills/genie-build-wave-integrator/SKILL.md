@@ -22,7 +22,7 @@ You run once per wave, after every session of the wave has finished (successfull
 ### Always apply (all modes)
 
 1. Do not fix session code or outputs. If something is broken, report it in the gate file; the run is repaired by re-running the failed session.
-2. Deploy or run nothing on targets outside `bundle_target`. Only read-only checks plus the checks listed in the wave `gate`.
+2. Deploy nothing, ever — not even for `converge` waves. Only read-only checks plus the checks listed in the wave `gate`. Runtime stability (`runtime_gate`) is checked deterministically by the gate notebook after you finish; do not try to reproduce it, and do not report it as passed.
 3. Never write or print secret values.
 
 ### Git guardrails (workflow `git` or `hybrid`)
@@ -34,13 +34,17 @@ You run once per wave, after every session of the wave has finished (successfull
 
 ### 1. Load the wave
 
-Read `manifest_path`. Find the wave with `wave_id == wave`. Keep its `sessions`, `manual_prereqs` and `gate`, plus top-level `workflow` (default `{"mode": "git"}`), `repo_root` (default: `build_root`), `bundle_target`, `status_dir`, `sessions_dir`.
+Read `manifest_path`. Find the wave with `wave_id == wave`. Keep its `sessions`, `manual_prereqs`, `gate` and `runtime_gate`, plus top-level `workflow` (default `{"mode": "git"}`), `repo_root` (default: `build_root`), `bundle_target`, `status_dir`, `sessions_dir`.
+
+Treat `converge` sessions exactly like `edit` sessions for file ownership, stray detection and staging (steps 3 and 6).
 
 Determine: `workflow_mode` = `manifest.workflow.mode` or `"git"`.
 
 ### 2. Collect session results
 
-For each session, read `build_root/<status_dir>/<run_id>/<session_id>.json`. A missing file counts as `error` (the task crashed or never ran). Build a table: session_id, mode, status, files_changed, assets_changed, failed/skipped checks, requests, blocking.
+For each session, read `build_root/<status_dir>/<run_id>/<session_id>.json`. A missing file counts as `error` (the task crashed or never ran). Build a table: session_id, mode, status, files_changed, assets_changed, failed/skipped checks, requests, blocking. For `converge` sessions also note the number of `attempts`, the last attempt's `result`, and every entry in `suppressions`.
+
+A `converge` session whose `files_changed` is not the union of its attempts' `files_changed`, or whose last attempt is not `stable` while `status` is `pass`, is inconsistent: treat it as `fail`.
 
 For each manual prereq, check its `done_when` condition by reading the files on disk (and branch history, if Git is available).
 
@@ -55,7 +59,7 @@ Otherwise, use Git status (read-only) on `repo_root`. Every changed or untracked
 
 Anything else is a **stray**. Do not stage strays; list them in the gate file. Strays fail the gate. If a file is in a session's `files_changed` but outside its `owned_paths`, treat it as a stray too.
 
-For `hybrid` mode: only `edit`-mode sessions produce files to check. Ignore `execute`/`configure` sessions in the stray analysis.
+For `hybrid` mode: only `edit`- and `converge`-mode sessions produce files to check. Ignore `execute`/`configure` sessions in the stray analysis.
 
 ### 4. Run the gate checks
 
@@ -67,6 +71,8 @@ Run each check in the wave `gate` list. Interpret each check description and exe
 
 Record each as `pass`, `fail` or `skipped` with a one-line detail. Skipped checks do not fail the gate but must be listed.
 
+If a `gate` line describes runtime state that is also covered by `runtime_gate` (app running, no error logs, soak), record it as `skipped` with detail `deferred to runtime_gate`.
+
 ### 5. Update the sessions index
 
 Update `build_root/<sessions_dir>/INDEX.md`: add one line per session summary from this wave at the top (reverse-chronological), with date, wave, session id, title, mode, status. Create the file with a short header if it does not exist.
@@ -77,7 +83,7 @@ If `workflow_mode` is `workspace`: **skip this step.** Go directly to step 7.
 
 Otherwise:
 
-1. Stage, by explicit path: the `files_changed` of every `edit`-mode session with status `pass`, their summary files, the summary files of non-passing sessions, and `INDEX.md`. Do **not** stage code from sessions whose status is not `pass`; leave it in the working tree for the repair run. Do **not** stage anything from `execute`/`configure` sessions (they don't produce tracked files).
+1. Stage, by explicit path: the `files_changed` of every `edit`- or `converge`-mode session with status `pass`, their summary files, the summary files of non-passing sessions, and `INDEX.md`. Do **not** stage code from sessions whose status is not `pass`; leave it in the working tree for the repair run. Do **not** stage anything from `execute`/`configure` sessions (they don't produce tracked files).
 2. If anything is staged, commit with message:
    ```
    wave(<wave>): <comma-separated session ids that passed>
@@ -104,13 +110,14 @@ Path: `build_root/<status_dir>/<run_id>/wave_<wave>_gate.json`:
   "checks": [{"name": "bundle validate --strict", "result": "pass", "detail": ""}],
   "stray_files": [],
   "requests": [{"from": "07", "path": "package.json", "change": "..."}],
+  "suppressions": [{"from": "14", "path": "tsconfig.server.json", "kind": "compile-exclude", "why": "..."}],
   "commit_sha": "abc1234 or empty",
   "reason": "one line when status is fail"
 }
 ```
 
-`status` is `pass` only if every session is `pass`, every manual prereq is `done`, no check `fail`ed and there are no strays (in `git`/`hybrid` mode). The next job task reads this file and stops the run on `fail`, so write it even when you hit an error (use `status: "fail"` and put the error in `reason`).
+`status` is `pass` only if every session is `pass`, every manual prereq is `done`, no check `fail`ed and there are no strays (in `git`/`hybrid` mode). Copy every session's `suppressions` into the gate file so a human can review them. Your `pass` is necessary but not sufficient when the wave has a `runtime_gate`: the gate notebook adds its own runtime verdict. The next job task reads this file and stops the run on `fail`, so write it even when you hit an error (use `status: "fail"` and put the error in `reason`).
 
 ### 8. Final response
 
-At most 6 lines: wave, workflow mode, gate status, per-session status, commit SHA (or "n/a" for workspace), skipped checks, and any `requests` the next wave or the user must act on.
+At most 6 lines: wave, workflow mode, gate status, per-session status, commit SHA (or "n/a" for workspace), skipped checks, suppressions count, and any `requests` the next wave or the user must act on.
