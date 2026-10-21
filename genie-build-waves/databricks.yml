@@ -67,6 +67,14 @@ targets:
     default: true
     workspace:
       host: https://fevm-hls-fde.cloud.databricks.com
+    variables:
+      # Example placeholders — override at deploy time with --var flags.
+      # These exist so `bundle validate` passes without --var.
+      build_root: /Workspace/Users/you@example.com/my-project
+      build_branch: feature-genie-build
+      manifest_path: /Workspace/Users/you@example.com/my-project/docs/plans/waves.json
+      skills_catalog: hls_fde_dev
+      skills_schema: dev_build_waves
 
   prod:
     mode: production
@@ -76,8 +84,9 @@ targets:
     run_as:
       user_name: matthew.giglia@databricks.com
     variables:
-      build_root: /Workspace/Users/matthew.giglia@databricks.com/example-project
+      # Example placeholders — override at deploy time with --var flags.
+      build_root: /Workspace/Users/you@example.com/my-project
       build_branch: feature-genie-build
-      manifest_path: /Workspace/Users/matthew.giglia@databricks.com/example-project/docs/plans/waves.json
+      manifest_path: /Workspace/Users/you@example.com/my-project/docs/plans/waves.json
       skills_catalog: hls_fde
       skills_schema: build_waves
