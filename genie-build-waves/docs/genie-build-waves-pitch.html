@@ -407,7 +407,8 @@
     }
     .card:hover { border-color: var(--accent-primary); box-shadow: 0 4px 24px rgba(255, 54, 33, 0.08); }
     .card .icon { font-size: 32px; margin-bottom: 16px; }
-    .card .card-icon-img { width: 56px; height: 56px; margin-bottom: 16px; display: block; }
+    .card .card-icon-img { width: 56px; height: 56px; margin-bottom: 16px; display: block; transition: filter 0.2s ease, transform 0.2s ease; }
+    .card:hover .card-icon-img { filter: drop-shadow(0 0 8px rgba(255, 54, 33, 0.55)); transform: scale(1.04); }
     .card h3 { margin-bottom: 8px; }
     .card p { font-size: 14px; line-height: 1.6; }
     .card .tag {
@@ -648,7 +649,10 @@
       width: auto;
       margin-bottom: 12px;
       display: block;
+      transition: filter 0.2s ease, opacity 0.2s ease;
+      opacity: 0.9;
     }
+    .card:hover .product-logo-inline { filter: drop-shadow(0 0 6px rgba(255, 54, 33, 0.45)); opacity: 1; }
     .arch-box .box-logo {
       height: 28px;
       width: auto;
