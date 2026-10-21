@@ -1553,26 +1553,32 @@ databricks bundle run setup_build_waves --target dev -p run_smoke=true
 
       <div class="card-grid" style="margin-top: 32px;">
         <div class="card">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/x8hqmg8948mwqrgtbsxw4j9/primary-icon-orange-repos.svg" alt="">
           <h3>No path overlap</h3>
           <p>In <code>git</code>/<code>hybrid</code> modes, two <code>edit</code>-mode sessions in the same wave must not have overlapping <code>owned_paths</code>. This prevents merge conflicts when sessions run in parallel.</p>
         </div>
         <div class="card">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/2534k4fgn938rnrp48nhrtj6/primary-icon-orange-data-security.svg" alt="">
           <h3>Sessions are Git read-only</h3>
           <p>Only the integrator commits, by explicit path, to a feature branch. Sessions never run Git write commands. <code>main</code>/<code>master</code> are refused as branch targets.</p>
         </div>
         <div class="card">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/c427qfjnc5g82k3tbhb3ngw/primary-icon-orange-deploy.svg" alt="">
           <h3>Single-writer deploys</h3>
           <p>A wave containing a <code>converge</code> or <code>allow_deploy</code> session must have exactly one session. The setup job rejects manifests that break this rule.</p>
         </div>
         <div class="card">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/kgsz7zh94bcchmcjpz5bwtfw/primary-icon-orange-data-quality-2.svg" alt="">
           <h3>Deterministic runtime gates</h3>
           <p>The gate notebook checks deployment state directly — it does not trust session or integrator reports. It queries the Apps API, Jobs API, and OTel tables itself.</p>
         </div>
         <div class="card">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/8bqxx9wv7p55ws9cmjbc9gj/primary-icon-orange-observable-metrics.svg" alt="">
           <h3>No suppression hiding</h3>
           <p><code>converge</code> sessions must fix causes, not hide them. Any test skip, compile exclude, <code>@ts-ignore</code>, or swallowed error must be listed in the status file and is surfaced in the gate output.</p>
         </div>
         <div class="card">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/wkmvfrtqrmjmskc49vj98vs/primary-icon-orange-governance.svg" alt="">
           <h3>Build job isolation</h3>
           <p>Never put the build-waves job in the bundle a <code>converge</code> session deploys. The deploy would reset the running build job mid-flight. Keep orchestration in the genie-build-waves bundle.</p>
         </div>
