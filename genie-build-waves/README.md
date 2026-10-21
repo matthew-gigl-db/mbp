@@ -15,18 +15,23 @@ A reusable Declarative Automation Bundle that orchestrates parallel Genie Code s
 ## How it works
 
 ```
-Wave 0:  [01] -----> integrate -> gate
-                                    |
-Wave 1:  [02] [03] [04] -> integrate -> gate
-                                           |
-Wave N:  [...] ----------> integrate -> gate -> done
+Wave 0:  [01] -> integrate -> gate -> gate_check (If/else)
+                                          |
+                                        true
+                                          |
+Wave 1:  [02] [03] [04] -> integrate -> gate -> gate_check
+                                                    |
+                                                  true
+                                                    |
+Wave N:  [...] ----------> integrate -> gate -> gate_check -> done
 ```
 
-Each wave follows a three-phase pattern:
+Each wave follows a four-phase pattern:
 
 1. **Sessions** (`for_each` at full wave concurrency) — Genie Code tasks that each complete one plan file. `edit` sessions write files within `owned_paths`; `execute` sessions run notebooks/SQL; `configure` sessions set up resources.
-2. **Integrator** (single Genie Code task) — Collects session status files, runs gate checks. In `git`/`hybrid` mode: checks for stray files and commits by explicit path (the *only* committer). In `workspace` mode: status collection and gates only.
-3. **Gate** (deterministic notebook) — Reads the integrator's gate JSON and every session's status file independently. Raises on failure, stopping downstream waves.
+2. **Integrator** (single Genie Code task, `run_if: ALL_DONE`) — Collects session status files, runs gate checks. In `git`/`hybrid` mode: checks for stray files and commits by explicit path (the *only* committer). In `workspace` mode: status collection and gates only.
+3. **Gate notebook** (`run_if: ALL_DONE`) — Reads the integrator's gate JSON and every session's status file independently. Sets a `gate_passed` task value (`true`/`false`).
+4. **Gate check** (If/else condition task) — Checks `gate_passed == "true"`. If false, all downstream wave tasks are **Excluded** — zero compute on cascade failure.
 
 ## Architecture
 
@@ -137,11 +142,13 @@ Run the build job from the Jobs UI. Set the `branch` parameter if not using the 
 
 ## When a wave fails
 
-1. Read the `wN_gate` error and `.build-status/<run_id>/wave_<N>_gate.json`.
+1. Read the `wN_gate` output and `.build-status/<run_id>/wave_<N>_gate.json`.
 2. Read the failing session's status file and summary in `docs/sessions/`.
 3. Passing sessions are already committed. Failing sessions' code is left uncommitted.
-4. Fix the cause (plan, manifest, or code), then **Repair run** selecting `wN_sessions`, `wN_integrate` and `wN_gate`.
+4. Fix the cause (plan, manifest, or code), then **Repair run** selecting `wN_sessions`, `wN_integrate`, `wN_gate`, and `wN_gate_check`.
 5. `requests` in the gate file list changes a session needed outside its owned paths. Apply them before repairing.
+
+Note: downstream waves show as **Excluded** (not failed). This is the correct cascade behavior — they never ran and consumed no compute.
 
 ## Changing a build
 
@@ -167,6 +174,7 @@ Sessions also have **modes** (`edit`, `execute`, `configure`) that control what 
 * **Placeholder workaround** — `genie_task` isn't in the bundle CLI schema; notebook placeholders get swapped via `jobs/reset`.
 * **Dynamic task graph** — The setup notebook generates the wave task structure from the manifest, so different projects with different wave counts work without YAML changes.
 * **Repair-friendly** — `run_if: ALL_DONE` on integrator/gate means failures get reported. Repair re-runs only failed tasks.
+* **Zero-compute cascade** — If/else gate checks use the Excluded propagation rule: when a gate fails, all downstream wave tasks are Excluded instantly (no wasted Genie Code compute).
 
 ## Guardrails
 
