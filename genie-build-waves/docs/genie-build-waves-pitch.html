@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Genie Build Waves — Parallel Build Orchestration for Databricks</title>
+  <meta name="description" content="A reusable Declarative Automation Bundle that orchestrates parallel Genie Code sessions to build anything inside Databricks — code, pipelines, ML models, and infrastructure.">
+  <link rel="icon" type="image/svg+xml" href="https://cdn.bfldr.com/9AYANS2F/at/b87x34rfnrgcfjvg93pt83x/databricks-symbol-light.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400;1,9..40,500;1,9..40,700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap" rel="stylesheet">
+  <style>
+    /* ── Databricks Brand CSS Custom Properties ────────────── */
+    :root {
+      color-scheme: light dark;
+
+      /* Primary Brand Colors */
+      --dbx-lava-600: #FF3621;
+      --dbx-lava-700: #BD2B26;
+      --dbx-lava-500: #FF5F46;
+      --dbx-lava-300: #FABFBA;
+      --dbx-navy-800: #1B3139;
+      --dbx-navy-900: #0B2026;
+      --dbx-navy-700: #143D4A;
+      --dbx-navy-600: #1B5162;
+      --dbx-navy-500: #618794;
+      --dbx-navy-400: #90A5B1;
+      --dbx-navy-300: #C4CCD6;
+      --dbx-oat-medium: #EEEDE9;
+      --dbx-oat-light: #F9F7F4;
+      --dbx-white: #FFFFFF;
+
+      /* Functional Grays */
+      --dbx-gray-nav: #303F47;
+      --dbx-gray-text: #5A6F77;
+      --dbx-gray-lines: #DCE0E2;
+
+      /* Accent Scales */
+      --dbx-green-600: #00A972;
+      --dbx-green-700: #00875C;
+      --dbx-green-300: #9ED6C4;
+      --dbx-yellow-600: #FFAB00;
+      --dbx-yellow-500: #FCBA33;
+      --dbx-yellow-300: #FFDB96;
+      --dbx-blue-600: #2272B4;
+      --dbx-blue-400: #8ACAFF;
+      --dbx-blue-300: #BAE1FC;
+
+      /* Semantic tokens — Light mode defaults */
+      --surface-primary: var(--dbx-white);
+      --surface-secondary: var(--dbx-oat-light);
+      --surface-tertiary: var(--dbx-oat-medium);
+      --surface-nav: var(--dbx-oat-light);
+      --text-primary: var(--dbx-navy-800);
+      --text-secondary: var(--dbx-gray-text);
+      --text-tertiary: var(--dbx-navy-500);
+      --text-on-accent: var(--dbx-white);
+      --border-default: var(--dbx-gray-lines);
+      --border-subtle: var(--dbx-oat-medium);
+      --accent-primary: var(--dbx-lava-600);
+      --accent-primary-hover: var(--dbx-lava-700);
+      --accent-success: var(--dbx-green-700);
+      --accent-warning: #BA7B23;
+      --accent-info: var(--dbx-blue-600);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --surface-primary: var(--dbx-navy-800);
+        --surface-secondary: var(--dbx-navy-900);
+        --surface-tertiary: var(--dbx-navy-700);
+        --surface-nav: var(--dbx-gray-nav);
+        --text-primary: var(--dbx-white);
+        --text-secondary: var(--dbx-navy-400);
+        --text-tertiary: var(--dbx-navy-500);
+        --border-default: var(--dbx-navy-600);
+        --border-subtle: var(--dbx-navy-700);
+        --accent-primary: var(--dbx-lava-500);
+        --accent-primary-hover: var(--dbx-lava-600);
+        --accent-success: var(--dbx-green-600);
+        --accent-warning: var(--dbx-yellow-600);
+        --accent-info: var(--dbx-blue-400);
+      }
+    }
+
+    /* ── Reset & Base ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: "DM Sans", "Inter", system-ui, -apple-system, sans-serif;
+      background-color: var(--surface-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    code, pre, .mono { font-family: "DM Mono", "JetBrains Mono", "Fira Code", monospace; }
+
+    /* ── Layout ───────────────────────────────────────────── */
+    .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+    section { padding: 80px 0; }
+    section + section { border-top: 1px solid var(--border-default); }
+
+    /* ── Typography ───────────────────────────────────────── */
+    h1 { font-size: 56px; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
+    h2 { font-size: 40px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; margin-bottom: 16px; }
+    h3 { font-size: 24px; font-weight: 700; line-height: 1.3; margin-bottom: 12px; }
+    h4 { font-size: 20px; font-weight: 500; line-height: 1.3; margin-bottom: 8px; color: var(--text-secondary); }
+    p { font-size: 16px; line-height: 1.5; color: var(--text-secondary); max-width: 70ch; }
+    p + p { margin-top: 16px; }
+    strong { color: var(--text-primary); font-weight: 700; }
+    .eyebrow {
+      font-size: 12px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--accent-primary);
+      margin-bottom: 8px;
+      display: inline-block;
+    }
+    .lead { font-size: 20px; line-height: 1.5; color: var(--text-secondary); max-width: 72ch; }
+
+    /* ── Hero ─────────────────────────────────────────────── */
+    .hero {
+      background: var(--dbx-navy-800);
+      color: var(--dbx-white);
+      padding: 64px 0 96px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(ellipse 80% 60% at 70% 0%, rgba(255, 54, 33, 0.12), transparent);
+      pointer-events: none;
+    }
+    .hero .container { position: relative; z-index: 1; }
+    .hero-logo { height: 40px; margin-bottom: 48px; }
+    .hero-logo img { height: 100%; width: auto; }
+    .hero h1 { color: var(--dbx-white); margin-bottom: 24px; }
+    .hero .lead { color: var(--dbx-navy-300); margin-bottom: 40px; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px;
+      border-radius: 100px;
+      background: rgba(255, 54, 33, 0.15);
+      border: 1px solid rgba(255, 54, 33, 0.3);
+      font-size: 12px; font-weight: 500;
+      color: var(--dbx-lava-500);
+      margin-bottom: 32px;
+    }
+    .hero-badge .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--dbx-lava-500);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.85); }
+    }
+    .cta-group { display: flex; gap: 16px; flex-wrap: wrap; }
+
+    /* ── Buttons ──────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 28px;
+      border-radius: 8px;
+      font-family: "DM Sans", sans-serif;
+      font-size: 16px; font-weight: 500;
+      text-decoration: none;
+      border: none; cursor: pointer;
+      transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    }
+    .btn-primary {
+      background: var(--dbx-lava-600);
+      color: var(--dbx-white);
+    }
+    .btn-primary:hover { background: var(--dbx-lava-700); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--dbx-white);
+      border: 1px solid var(--dbx-navy-400);
+    }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--dbx-white); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--accent-primary);
+      padding: 12px 0;
+    }
+    .btn-ghost:hover { color: var(--accent-primary-hover); }
+    .btn .arrow { transition: transform 0.2s ease; }
+    .btn:hover .arrow { transform: translateX(4px); }
+
+    /* ── Wave Diagram ─────────────────────────────────────── */
+    .wave-diagram {
+      background: var(--dbx-navy-900);
+      border-radius: 16px;
+      padding: 40px;
+      margin-top: 64px;
+      border: 1px solid var(--dbx-navy-700);
+      overflow-x: auto;
+    }
+    .wave-diagram .wave-row {
+      display: flex; align-items: center; gap: 16px;
+      margin-bottom: 12px;
+      font-family: "DM Mono", monospace;
+      font-size: 14px;
+      color: var(--dbx-navy-400);
+      white-space: nowrap;
+    }
+    .wave-diagram .wave-label { color: var(--dbx-white); font-weight: 500; min-width: 80px; }
+    .wave-diagram .session-box {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 6px;
+      background: var(--dbx-navy-700);
+      border: 1px solid var(--dbx-navy-600);
+      color: var(--dbx-navy-300);
+      margin: 0 4px;
+    }
+    .wave-diagram .phase {
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .wave-diagram .phase-integrate { background: rgba(34, 114, 180, 0.2); color: var(--dbx-blue-400); }
+    .wave-diagram .phase-gate { background: rgba(255, 171, 0, 0.2); color: var(--dbx-yellow-600); }
+    .wave-diagram .phase-check { background: rgba(0, 169, 114, 0.2); color: var(--dbx-green-600); }
+    .wave-diagram .arrow-down {
+      color: var(--dbx-navy-500);
+      margin-left: 100px;
+      font-size: 18px;
+    }
+
+    /* ── Architecture Diagrams ────────────────────────────── */
+    .arch-diagram {
+      background: var(--dbx-navy-900);
+      border-radius: 16px;
+      padding: 40px;
+      margin: 32px 0;
+      border: 1px solid var(--dbx-navy-700);
+      overflow-x: auto;
+    }
+    .arch-diagram .arch-title {
+      font-size: 12px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--dbx-navy-400);
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    .arch-layer {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 0;
+      position: relative;
+    }
+    .arch-box {
+      background: var(--dbx-navy-700);
+      border: 1px solid var(--dbx-navy-600);
+      border-radius: 10px;
+      padding: 14px 20px;
+      text-align: center;
+      min-width: 140px;
+      position: relative;
+      z-index: 1;
+    }
+    .arch-box.accent-lava { border-color: var(--dbx-lava-600); background: rgba(255, 54, 33, 0.08); }
+    .arch-box.accent-blue { border-color: var(--dbx-blue-600); background: rgba(34, 114, 180, 0.08); }
+    .arch-box.accent-green { border-color: var(--dbx-green-600); background: rgba(0, 169, 114, 0.08); }
+    .arch-box.accent-yellow { border-color: var(--dbx-yellow-600); background: rgba(255, 171, 0, 0.08); }
+    .arch-box.wide { min-width: 280px; }
+    .arch-box .box-title {
+      font-size: 14px; font-weight: 700;
+      color: var(--dbx-white);
+      margin-bottom: 4px;
+    }
+    .arch-box .box-sub {
+      font-size: 11px;
+      color: var(--dbx-navy-400);
+      font-family: "DM Mono", monospace;
+      line-height: 1.4;
+    }
+    .arch-box .box-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 100px;
+      font-size: 10px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-top: 6px;
+      font-family: "DM Sans", sans-serif;
+    }
+    .box-tag-lava { background: rgba(255, 54, 33, 0.2); color: var(--dbx-lava-500); }
+    .box-tag-blue { background: rgba(34, 114, 180, 0.2); color: var(--dbx-blue-400); }
+    .box-tag-green { background: rgba(0, 169, 114, 0.2); color: var(--dbx-green-600); }
+    .box-tag-yellow { background: rgba(255, 171, 0, 0.2); color: var(--dbx-yellow-600); }
+    .arch-arrow {
+      text-align: center;
+      color: var(--dbx-navy-500);
+      font-size: 20px;
+      padding: 8px 0;
+      line-height: 1;
+    }
+    .arch-arrow-label {
+      font-size: 11px;
+      color: var(--dbx-navy-400);
+      font-family: "DM Mono", monospace;
+      margin-top: 2px;
+    }
+    .arch-connector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--dbx-navy-500);
+      font-size: 16px;
+      padding: 0 4px;
+    }
+    .arch-group {
+      border: 1px dashed var(--dbx-navy-600);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 0 auto;
+      max-width: fit-content;
+    }
+    .arch-group-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--dbx-navy-400);
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .arch-flow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+    .arch-flow-row {
+      display: flex;
+      align-items: stretch;
+      gap: 12px;
+      width: 100%;
+      justify-content: center;
+    }
+    .arch-flow-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      flex: 1;
+      max-width: 280px;
+    }
+    .arch-side {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-self: center;
+    }
+    .arch-side .arch-box { min-width: 160px; padding: 10px 16px; }
+    .arch-legend {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--dbx-navy-700);
+    }
+    .arch-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--dbx-navy-400);
+    }
+    .arch-legend-dot {
+      width: 12px; height: 12px;
+      border-radius: 4px;
+      border: 1px solid;
+    }
+    .legend-lava { border-color: var(--dbx-lava-600); background: rgba(255, 54, 33, 0.15); }
+    .legend-blue { border-color: var(--dbx-blue-600); background: rgba(34, 114, 180, 0.15); }
+    .legend-green { border-color: var(--dbx-green-600); background: rgba(0, 169, 114, 0.15); }
+    .legend-yellow { border-color: var(--dbx-yellow-600); background: rgba(255, 171, 0, 0.15); }
+    .legend-navy { border-color: var(--dbx-navy-600); background: var(--dbx-navy-700); }
+    .arch-divider {
+      width: 100%;
+      height: 1px;
+      background: var(--dbx-navy-700);
+      margin: 28px 0;
+    }
+
+    /* ── Cards ────────────────────────────────────────────── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+    .card {
+      background: var(--surface-tertiary);
+      border: 1px solid var(--border-default);
+      border-radius: 16px;
+      padding: 32px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card:hover { border-color: var(--accent-primary); box-shadow: 0 4px 24px rgba(255, 54, 33, 0.08); }
+    .card .icon { font-size: 32px; margin-bottom: 16px; }
+    .card h3 { margin-bottom: 8px; }
+    .card p { font-size: 14px; line-height: 1.6; }
+    .card .tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: 11px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-top: 16px;
+    }
+    .tag-git { background: rgba(0, 169, 114, 0.15); color: var(--accent-success); }
+    .tag-workspace { background: rgba(34, 114, 180, 0.15); color: var(--accent-info); }
+    .tag-hybrid { background: rgba(255, 171, 0, 0.15); color: var(--accent-warning); }
+
+    /* ── Feature List ─────────────────────────────────────── */
+    .feature-list { list-style: none; padding: 0; }
+    .feature-list li {
+      display: flex; gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .feature-list li:last-child { border-bottom: none; }
+    .feature-list .check {
+      flex-shrink: 0;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--accent-success);
+      color: var(--dbx-white);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700;
+      margin-top: 2px;
+    }
+    .feature-list .text { flex: 1; }
+    .feature-list .text strong { display: block; margin-bottom: 4px; }
+    .feature-list .text span { font-size: 14px; color: var(--text-secondary); }
+
+    /* ── Table ────────────────────────────────────────────── */
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin-top: 24px;
+    }
+    .styled-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-weight: 500;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+      border-bottom: 2px solid var(--border-default);
+    }
+    .styled-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+    }
+    .styled-table td strong { color: var(--text-primary); }
+    .styled-table tr:hover td { background: var(--surface-secondary); }
+
+    /* ── Code Block ───────────────────────────────────────── */
+    .code-block {
+      background: var(--dbx-navy-900);
+      border-radius: 12px;
+      padding: 24px;
+      margin: 16px 0;
+      overflow-x: auto;
+    }
+    .code-block pre {
+      font-family: "DM Mono", monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--dbx-navy-300);
+    }
+    .code-block .comment { color: var(--dbx-navy-500); }
+    .code-block .keyword { color: var(--dbx-lava-500); }
+    .code-block .string { color: var(--dbx-green-600); }
+    .code-block .variable { color: var(--dbx-yellow-600); }
+
+    /* ── Callout ──────────────────────────────────────────── */
+    .callout {
+      background: var(--surface-secondary);
+      border-left: 4px solid var(--accent-primary);
+      border-radius: 0 12px 12px 0;
+      padding: 24px 32px;
+      margin: 32px 0;
+    }
+    .callout .callout-label {
+      font-size: 12px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--accent-primary);
+      margin-bottom: 8px;
+    }
+    .callout p { color: var(--text-secondary); font-size: 15px; }
+    .callout p strong { color: var(--text-primary); }
+
+    /* ── Requirements Grid ───────────────────────────────── */
+    .req-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 32px;
+    }
+    .req-item {
+      background: var(--surface-tertiary);
+      border: 1px solid var(--border-default);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .req-item .req-label {
+      font-size: 12px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+      margin-bottom: 8px;
+    }
+    .req-item .req-value {
+      font-size: 16px; font-weight: 700;
+      color: var(--text-primary);
+    }
+    .req-item .req-detail {
+      font-size: 13px; color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* ── Best Practice Numbered List ──────────────────────── */
+    .bp-list { counter-reset: bp; list-style: none; padding: 0; }
+    .bp-list li {
+      counter-increment: bp;
+      padding: 24px 0 24px 64px;
+      border-bottom: 1px solid var(--border-subtle);
+      position: relative;
+    }
+    .bp-list li:last-child { border-bottom: none; }
+    .bp-list li::before {
+      content: counter(bp);
+      position: absolute;
+      left: 0; top: 24px;
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      color: var(--dbx-white);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700;
+    }
+    .bp-list li h3 { margin-bottom: 8px; }
+    .bp-list li p { font-size: 15px; }
+    .bp-list li .bp-code {
+      display: block;
+      margin-top: 12px;
+      background: var(--dbx-navy-900);
+      border-radius: 8px;
+      padding: 16px;
+      font-family: "DM Mono", monospace;
+      font-size: 13px;
+      color: var(--dbx-navy-300);
+      overflow-x: auto;
+    }
+
+    /* ── Stats Row ────────────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+      margin: 48px 0;
+    }
+    .stat {
+      text-align: center;
+      padding: 24px;
+    }
+    .stat .stat-value {
+      font-size: 48px; font-weight: 700;
+      color: var(--accent-primary);
+      line-height: 1;
+    }
+    .stat .stat-label {
+      font-size: 14px; color: var(--text-secondary);
+      margin-top: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* ── Footer ───────────────────────────────────────────── */
+    footer {
+      background: var(--dbx-navy-800);
+      color: var(--dbx-navy-400);
+      padding: 64px 0 48px;
+    }
+    footer .container { display: flex; flex-direction: column; gap: 24px; }
+    footer .footer-logo { height: 32px; opacity: 0.8; }
+    footer .footer-logo img { height: 100%; }
+    footer .footer-links { display: flex; gap: 32px; flex-wrap: wrap; }
+    footer .footer-links a {
+      color: var(--dbx-navy-300);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.2s ease;
+    }
+    footer .footer-links a:hover { color: var(--dbx-white); }
+    footer .footer-bottom {
+      font-size: 12px;
+      color: var(--dbx-navy-500);
+      padding-top: 24px;
+      border-top: 1px solid var(--dbx-navy-700);
+    }
+
+    /* ── Product Logo Strip ───────────────────────────────── */
+    .product-strip {
+      display: flex;
+      align-items: center;
+      gap: 40px;
+      flex-wrap: wrap;
+      padding: 32px 0;
+      margin-top: 48px;
+      border-top: 1px solid var(--dbx-navy-700);
+    }
+    .product-strip .strip-label {
+      font-size: 11px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--dbx-navy-500);
+      white-space: nowrap;
+    }
+    .product-strip .strip-logos {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+    .product-strip .strip-logos img {
+      height: 32px;
+      width: auto;
+      opacity: 0.85;
+      transition: opacity 0.2s ease;
+    }
+    .product-strip .strip-logos img:hover { opacity: 1; }
+    .product-logo-inline {
+      height: 40px;
+      width: auto;
+      margin-bottom: 12px;
+      display: block;
+    }
+    .arch-box .box-logo {
+      height: 24px;
+      width: auto;
+      margin-bottom: 6px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+      opacity: 0.9;
+    }
+
+    /* ── Responsive ──────────────────────────────────────── */
+    @media (max-width: 768px) {
+      h1 { font-size: 36px; }
+      h2 { font-size: 28px; }
+      .hero { padding: 48px 0 64px; }
+      section { padding: 56px 0; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .stat .stat-value { font-size: 36px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- HERO -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <header class="hero">
+    <div class="container">
+      <div class="hero-logo">
+        <img src="https://cdn.bfldr.com/9AYANS2F/at/q726x4x6gn6z84bq4fcc4zg8/primary-lockup-full-color-white-rgb.svg" alt="Databricks">
+      </div>
+      <span class="hero-badge">
+        <span class="dot"></span>
+        Technology Preview — Built on Genie Code
+      </span>
+      <h1>Genie Build Waves</h1>
+      <p class="lead">A reusable Declarative Automation Bundle that orchestrates parallel Genie Code sessions to build anything inside Databricks — code, data pipelines, ML models, and infrastructure — with deterministic quality gates and zero-compute cascade failure.</p>
+      <div class="cta-group">
+        <a class="btn btn-primary" href="#what-is-it">
+          Explore the framework
+          <span class="arrow">&rarr;</span>
+        </a>
+        <a class="btn btn-secondary" href="#getting-started">
+          Preview requirements
+        </a>
+      </div>
+
+      <!-- Product logo strip — same cdn.bfldr.com CDN as the Databricks logos above -->
+      <div class="product-strip">
+        <span class="strip-label">Powered by</span>
+        <div class="strip-logos">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/2x894frtq656jgfnctc3wfxf/genie-code-lockup-no-db-full-color-white.svg" alt="Genie Code" title="Genie Code">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/np65jmhvm6xfs8fzctvc4h/lakeflow-jobs-lockup-no-db-full-color-white.svg" alt="Lakeflow Jobs" title="Lakeflow Jobs">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/q7vqbv3b7hx9r52tcv2fgkhb/unity-catalog-lockup-no-db-full-color-white.svg" alt="Unity Catalog" title="Unity Catalog">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/gpbkh62csg3pq59b3xp3h8hp/apps-lockup-no-db-full-color-white.svg" alt="Databricks Apps" title="Apps">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/vp6c9wh4nh994r28bvsxx/notebooks-lockup-no-db-full-color-white-alt.svg" alt="Notebooks" title="Notebooks">
+        </div>
+      </div>
+
+      <!-- Wave diagram -->
+      <div class="wave-diagram">
+        <div class="wave-row">
+          <span class="wave-label">Wave 0</span>
+          <span class="session-box">01</span>
+          <span class="arrow-down">&rarr;</span>
+          <span class="phase phase-integrate">integrate</span>
+          <span class="arrow-down">&rarr;</span>
+          <span class="phase phase-gate">gate</span>
+          <span class="arrow-down">&rarr;</span>
+          <span class="phase phase-check">gate_check</span>
+        </div>
+        <div class="wave-row"><span class="arrow-down">&darr;</span></div>
+        <div class="wave-row">
+          <span class="wave-label">Wave 1</span>
+          <span class="session-box">02</span>
+          <span class="session-box">03</span>
+          <span class="session-box">04</span>
+          <span class="arrow-down">&rarr;</span>
+          <span class="phase phase-integrate">integrate</span>
+          <span class="arrow-down">&rarr;</span>
+          <span class="phase phase-gate">gate</span>
+          <span class="arrow-down">&rarr;</span>
+          <span class="phase phase-check">gate_check</span>
+        </div>
+        <div class="wave-row"><span class="arrow-down">&darr;</span></div>
+        <div class="wave-row">
+          <span class="wave-label">Wave N</span>
+          <span class="session-box">...</span>
+          <span class="arrow-down">&rarr;</span>
+          <span class="phase phase-integrate">integrate</span>
+          <span class="arrow-down">&rarr;</span>
+          <span class="phase phase-gate">gate</span>
+          <span class="arrow-down">&rarr;</span>
+          <span class="phase phase-check">gate_check</span>
+          <span class="arrow-down">&rarr;</span>
+          <span style="color: var(--dbx-white); font-weight: 500;">done</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- WHAT IS IT -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="what-is-it">
+    <div class="container">
+      <span class="eyebrow">Overview</span>
+      <h2>What is Genie Build Waves?</h2>
+      <p class="lead">Genie Build Waves is a Databricks Declarative Automation Bundle that decomposes any large project into dependency-ordered waves of parallel Genie Code sessions. Each wave runs sessions concurrently, integrates results, and passes through a deterministic gate before the next wave begins. If a gate fails, every downstream wave is instantly excluded — zero compute wasted on a known-bad state.</p>
+
+      <p>Deploy the bundle once per workspace. Point it at any project's <code>waves.json</code> manifest. The setup job reads the manifest and generates a full task graph dynamically — no hardcoded waves in YAML. This means projects with two waves and projects with twenty waves both work without any bundle configuration changes.</p>
+
+      <div class="stats-row">
+        <div class="stat">
+          <div class="stat-value">3</div>
+          <div class="stat-label">Workflow Modes</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">4</div>
+          <div class="stat-label">Session Modes</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">0</div>
+          <div class="stat-label">Wasted Compute on Failure</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">1</div>
+          <div class="stat-label">Bundle Per Workspace</div>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 48px;">What you can build</h3>
+      <div class="card-grid" style="margin-top: 24px;">
+        <div class="card">
+          <div class="icon">📦</div>
+          <h3>DABs Bundles &amp; Apps</h3>
+          <p>Author code in parallel sessions, commit per wave in git mode. Ownership boundaries prevent merge conflicts between concurrent sessions.</p>
+          <span class="tag tag-git">git mode</span>
+        </div>
+        <div class="card">
+          <div class="icon">🔧</div>
+          <h3>Data Engineering Pipelines</h3>
+          <p>Create tables, run notebooks, validate outputs. Sessions execute in parallel and gates check row counts, schema validity, and data quality.</p>
+          <span class="tag tag-workspace">workspace mode</span>
+        </div>
+        <div class="card">
+          <div class="icon">🤖</div>
+          <h3>ML Model Training</h3>
+          <p>Parallel EDA, feature engineering, and model training with champion selection. Train multiple models concurrently and gate on accuracy thresholds.</p>
+          <span class="tag tag-workspace">workspace mode</span>
+        </div>
+        <div class="card">
+          <div class="icon">🚀</div>
+          <h3>Platform Migrations</h3>
+          <p>Move workloads from external platforms into Databricks. Hybrid sessions edit migration code and execute validation queries in the same wave.</p>
+          <span class="tag tag-hybrid">hybrid mode</span>
+        </div>
+        <div class="card">
+          <div class="icon">🏗️</div>
+          <h3>Infrastructure Setup</h3>
+          <p>Create schemas, volumes, endpoints, and grants across environments. Configure sessions own their resources and verify they exist in the gate.</p>
+          <span class="tag tag-workspace">workspace mode</span>
+        </div>
+        <div class="card">
+          <div class="icon">✅</div>
+          <h3>Testing Campaigns</h3>
+          <p>Run validation notebooks in parallel, gate on pass/fail. Each test session owns its assets and reports results independently to the integrator.</p>
+          <span class="tag tag-workspace">workspace mode</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- WHY IT'S VALUABLE -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="why-valuable">
+    <div class="container">
+      <span class="eyebrow">Value Proposition</span>
+      <h2>Why Genie Build Waves is valuable</h2>
+      <p class="lead">Large Databricks projects share a common bottleneck: they are too big for a single Genie Code session to hold in context, but too interdependent to parallelize naively. Genie Build Waves solves this with structured parallelism, ownership boundaries, and deterministic gates — turning a sprawling build into a managed, observable pipeline.</p>
+
+      <ul class="feature-list" style="margin-top: 32px;">
+        <li>
+          <span class="check">&#10003;</span>
+          <div class="text">
+            <strong>Parallelism without conflict</strong>
+            <span>Each session owns its paths or assets. The framework enforces non-overlapping <code>owned_paths</code> within a wave, so concurrent file edits never collide. The integrator is the sole committer — sessions never run Git write commands.</span>
+          </div>
+        </li>
+        <li>
+          <span class="check">&#10003;</span>
+          <div class="text">
+            <strong>Deterministic quality gates</strong>
+            <span>Every wave ends with a gate notebook that reads session status files and checks assertions independently. Gates are human-readable text the integrator interprets: &ldquo;bundle validate --strict passes&rdquo;, &ldquo;table X has &gt;0 rows&rdquo;, &ldquo;notebook Y ran without errors&rdquo;. For convergence waves, the gate also checks deployment state, soak stability, and OTel error lines.</span>
+          </div>
+        </li>
+        <li>
+          <span class="check">&#10003;</span>
+          <div class="text">
+            <strong>Zero-compute cascade failure</strong>
+            <span>If a gate fails, an If/else condition task excludes all downstream wave tasks instantly. No Genie Code sessions spin up on a known-bad state. This keeps costs predictable and focuses debugging on the wave that actually broke.</span>
+          </div>
+        </li>
+        <li>
+          <span class="check">&#10003;</span>
+          <div class="text">
+            <strong>Repair-friendly</strong>
+            <span>Failing sessions leave their code uncommitted; passing sessions are already committed. Repair re-runs only the failed wave's tasks. Earlier waves show as skipped or already-completed — they re-validate idempotently.</span>
+          </div>
+        </li>
+        <li>
+          <span class="check">&#10003;</span>
+          <div class="text">
+            <strong>Two-phase build lifecycle</strong>
+            <span>Initial builds use wide, parallel <code>edit</code> waves to get breadth quickly. Follow-up convergence waves deploy, read telemetry, fix issues, and redeploy until stable. A passing stable build — deployed, running, clean logs — is part of the pass criteria, not just &ldquo;files exist&rdquo;.</span>
+          </div>
+        </li>
+        <li>
+          <span class="check">&#10003;</span>
+          <div class="text">
+            <strong>Generic and reusable</strong>
+            <span>One bundle per workspace. Project-specific values pass as <code>--var</code> flags at deploy time. The bundle's <code>databricks.yml</code> stays generic. Multiple projects share the same deployed bundle via <code>instance_suffix</code> — each gets its own deployment state, jobs, and automations.</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- WHY GENIE CODE -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="why-genie-code" style="background: var(--surface-secondary);">
+    <div class="container">
+      <span class="eyebrow">The AI Engine</span>
+      <h2>Why Genie Code for building in Databricks</h2>
+      <p class="lead">Genie Code is the AI assistant built into Databricks. It reads and writes notebooks, queries, dashboards, and files in your workspace. It executes SQL, Python, and shell commands on your serverless compute. It understands Databricks-specific concepts — Unity Catalog, Lakeflow Jobs, Declarative Automation Bundles, Spark Declarative Pipelines — out of the box, without prompt engineering or context window management on your part.</p>
+
+      <div class="card-grid" style="margin-top: 32px;">
+        <div class="card">
+          <img class="product-logo-inline" src="https://cdn.bfldr.com/9AYANS2F/at/tcj54xm6jtkrw5qxwmwscfm/genie-code-lockup-no-db-full-color.svg" alt="Genie Code">
+          <h3>Native Databricks context</h3>
+          <p>Genie Code already knows your workspace, your tables, your schemas, your bundles, and your jobs. No API setup, no token management, no context window stuffing. It reads the same files you see in the workspace browser.</p>
+        </div>
+        <div class="card">
+          <img class="product-logo-inline" src="https://cdn.bfldr.com/9AYANS2F/at/qjf4r46mjr4czwfx9p7qjp/lakeflow-jobs-lockup-no-db-full-color.svg" alt="Lakeflow Jobs">
+          <h3>Serverless execution</h3>
+          <p>Sessions run on serverless compute — no cluster provisioning, no cold starts. Genie Code executes SQL, Python, and shell directly. The build framework leverages this for <code>execute</code> and <code>configure</code> sessions that create resources as part of the build.</p>
+        </div>
+        <div class="card">
+          <img class="product-logo-inline" src="https://cdn.bfldr.com/9AYANS2F/at/v2j43tgzpgm8k82kvs59cf/unity-catalog-lockup-no-db-full-color-container.svg" alt="Unity Catalog">
+          <h3>Skills as reusable prompts</h3>
+          <p>The bundle publishes two UC Skills — a session runner and a wave integrator — that provide structured prompts for each Genie Code task. Skills are versioned, stored in Unity Catalog, and invoked by the job's <code>genie_task</code> entries. Change a skill and re-run setup; every session picks up the new prompt.</p>
+        </div>
+        <div class="card">
+          <img class="product-logo-inline" src="https://cdn.bfldr.com/9AYANS2F/at/74w4g7rgbx96q3mxptv3z2q/apps-lockup-no-db-full-color.svg" alt="Apps">
+          <h3>SDK &amp; CLI native</h3>
+          <p>Genie Code runs the Databricks SDK and CLI natively. The setup notebook uses the SDK to publish skills, create automations, and generate the job task graph via <code>jobs/reset</code>. Convergence sessions use the CLI to <code>bundle deploy</code> and the Apps API to verify deployment status.</p>
+        </div>
+      </div>
+
+      <div class="callout">
+        <div class="callout-label">Key insight</div>
+        <p><strong>Genie Code is the build worker.</strong> Each session in a wave is a Genie Code task — a scheduled insight that receives a session plan, reads the manifest, implements within its owned paths, validates, and writes a status JSON file. The framework provides the structure; Genie Code provides the intelligence.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- PREVIEW REQUIREMENTS -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="getting-started">
+    <div class="container">
+      <span class="eyebrow">Technology Preview</span>
+      <h2>Preview requirements</h2>
+      <p class="lead">Genie Build Waves is in technology preview. The framework is functional and has completed real builds, but APIs and schemas may change between iterations. Here is what you need to run it today.</p>
+
+      <div class="req-grid">
+        <div class="req-item">
+          <div class="req-label">Databricks Workspace</div>
+          <div class="req-value">Serverless enabled</div>
+          <div class="req-detail">Genie Code tasks require serverless compute. Both CPU and GPU-backed serverless are supported.</div>
+        </div>
+        <div class="req-item">
+          <div class="req-label">Genie Code Access</div>
+          <div class="req-value">Scheduled insights enabled</div>
+          <div class="req-detail">Genie Code tasks use the scheduled insights API (genie_task). Your workspace must have this feature enabled.</div>
+        </div>
+        <div class="req-item">
+          <div class="req-label">Unity Catalog</div>
+          <div class="req-value">Catalog + Schema for skills</div>
+          <div class="req-detail">Two UC Skills are published at setup time. You need CREATE SCHEMA permission or an existing schema. The setup job can auto-create the schema.</div>
+        </div>
+        <div class="req-item">
+          <div class="req-label">Git</div>
+          <div class="req-value">Git folder (git/hybrid mode)</div>
+          <div class="req-detail">For git and hybrid workflows, the target project must be in a Databricks Git folder. Workspace mode requires no Git.</div>
+        </div>
+        <div class="req-item">
+          <div class="req-label">Databricks CLI</div>
+          <div class="req-value">Latest version</div>
+          <div class="req-detail">Required for <code>bundle deploy</code>, <code>bundle run</code>, and <code>bundle validate</code> commands.</div>
+        </div>
+        <div class="req-item">
+          <div class="req-label">Project Plans</div>
+          <div class="req-value">waves.json + plan files</div>
+          <div class="req-detail">A <code>waves.json</code> manifest and session plan files in <code>docs/plans/</code>. The planner skill can help generate these from your project analysis.</div>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 48px;">Deploy and run in five steps</h3>
+      <div class="code-block">
+        <pre><span class="comment"># 1. Deploy the bundle with --var flags (keep databricks.yml generic)</span>
+databricks bundle deploy --target dev \
+  --var=<span class="string">"project_name=My App"</span> \
+  --var=<span class="string">"instance_suffix=-my-app"</span> \
+  --var=<span class="string">"build_root=/Workspace/Users/you@example.com/my-project"</span> \
+  --var=<span class="string">"build_branch=feature-genie-build"</span> \
+  --var=<span class="string">"manifest_path=/Workspace/Users/you@example.com/my-project/docs/plans/waves.json"</span> \
+  --var=<span class="string">"skills_catalog=my_catalog"</span> \
+  --var=<span class="string">"skills_schema=my_schema"</span>
+
+<span class="comment"># 2. Run setup to publish skills and patch the build job with real tasks</span>
+databricks bundle run setup_build_waves --target dev
+
+<span class="comment"># 3. Smoke test to verify Genie Code tasks work inside for_each</span>
+databricks bundle run setup_build_waves --target dev -p run_smoke=true
+
+<span class="comment"># 4. Start the build from the Jobs UI (or CLI)</span>
+<span class="comment">#    Watch each wN_gate task for pass/fail</span>
+
+<span class="comment"># 5. If a wave fails, repair run only the failed wave's tasks</span>
+<span class="comment">#    Earlier waves show as skipped; passing sessions are already committed</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- BEST PRACTICES -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="best-practices" style="background: var(--surface-secondary);">
+    <div class="container">
+      <span class="eyebrow">Best Practices</span>
+      <h2>Working with the framework</h2>
+      <p class="lead">Genie Build Waves is a powerful orchestration tool, but it is not a substitute for good design. The framework executes your plans — it does not write them. Following these practices will make your builds faster, safer, and more maintainable.</p>
+
+      <ol class="bp-list" style="margin-top: 32px;">
+        <li>
+          <h3>Use Declarative Automation Bundles in Git Folders</h3>
+          <p>The bundle and the project being built are separate Git folders. The bundle orchestrates; the project is what gets built. Deploy the bundle once per workspace using <code>--var</code> flags — never edit <code>databricks.yml</code> with project-specific values. This keeps the bundle generic and reusable across any number of projects.</p>
+          <div class="bp-code">/Workspace/Users/you@example.com/
+  ├─ genie-build-waves/    ← this bundle (deployed once per workspace)
+  └─ my-project/            ← the project being built (separate Git folder)</div>
+        </li>
+        <li>
+          <h3>Use the Databricks AppKit and manual CLI for app bundle creation</h3>
+          <p>When your build target is a Databricks App, create the app bundle manually using the Databricks CLI (<code>databricks apps create</code>) or the AppKit scaffold flow. Do not let a build-wave session auto-scaffold an app from scratch — the framework is designed to build on top of a well-structured existing bundle, not to invent one. The <code>converge</code> session deploys and verifies, but the bundle itself should exist before the build starts.</p>
+        </li>
+        <li>
+          <h3>Curate your designs before using this package</h3>
+          <p>The most common failure mode is feeding Genie Build Waves an under-designed project. The framework decomposes and parallelizes — it does not architect. Before writing your <code>waves.json</code>, invest in:</p>
+          <ul style="margin-top: 12px; padding-left: 20px; font-size: 15px; color: var(--text-secondary);">
+            <li><strong>Architecture documents</strong> — What are the components, their boundaries, and their dependencies?</li>
+            <li><strong>API contracts</strong> — What interfaces do components expose? Define schemas, endpoints, and data shapes upfront.</li>
+            <li><strong>Session plans</strong> — Each plan file must have numbered tasks, scope, and acceptance criteria. Vague plans produce vague sessions.</li>
+            <li><strong>Ownership boundaries</strong> — Know which files belong to which session. Path overlap within a wave causes conflicts.</li>
+            <li><strong>Gate criteria</strong> — Define what &ldquo;done&rdquo; means for each wave. Write gates as assertions, not aspirations.</li>
+          </ul>
+          <p style="margin-top: 12px;">A well-curated design with 16 sessions across 6 waves will outperform a vague design with 40 sessions across 10 waves every time. The planner skill (in the bundle repo) can help with decomposition, but the quality of the input determines the quality of the output.</p>
+        </li>
+        <li>
+          <h3>Keep sessions small and focused</h3>
+          <p>Each session should complete one plan file with a clear scope. If a session tries to do too much, it will run long, lose context, and produce incomplete work. The framework's <code>owned_paths</code> enforcement helps here — if you cannot describe the ownership boundaries cleanly, the session is too big. Split it.</p>
+        </li>
+        <li>
+          <h3>Use <code>instance_suffix</code> for every project</h3>
+          <p>The <code>instance_suffix</code> variable is appended to the bundle root path, giving each project its own deployment state, jobs, and automations. Without it, deploying for a second project replaces the first project's jobs. Use a consistent suffix like <code>-my-app</code> every time you deploy or validate for a given project.</p>
+        </li>
+        <li>
+          <h3>Separate initial builds from convergence</h3>
+          <p>Initial builds use wide, parallel <code>edit</code> waves to get code breadth quickly. Convergence waves are sequential, one session per wave, and include deterministic runtime gates that check deployment state, soak stability, and OTel error lines. Do not mix deploy sessions into parallel waves — the setup job rejects any wave where a deploying session shares with another session.</p>
+        </li>
+        <li>
+          <h3>Never put the build job in the bundle being converged</h3>
+          <p>If a <code>converge</code> session deploys a bundle that also defines the build-waves job, the deploy will reset the running build job mid-flight. Keep the orchestration in the genie-build-waves bundle. The project being built should not reference the build job's resources.</p>
+        </li>
+        <li>
+          <h3>Add <code>.build-status/</code> to <code>.gitignore</code></h3>
+          <p>The status directory is per-run and ephemeral. It contains session status files, gate JSON, and runtime gate results. In <code>git</code>/<code>hybrid</code> modes, it must be git-ignored to prevent the integrator from accidentally committing build artifacts.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- ARCHITECTURE -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="architecture">
+    <div class="container">
+      <span class="eyebrow">Architecture</span>
+      <h2>How it works</h2>
+      <p class="lead">Each wave follows a four-phase pattern: sessions run in parallel, the integrator collects and commits, the gate notebook checks deterministically, and an If/else condition task decides whether to continue or cascade-exclude.</p>
+
+      <!-- ── Diagram 1: System Architecture ──────────────────── -->
+      <div class="arch-diagram">
+        <div class="arch-title">System Architecture &mdash; Bundle, Unity Catalog, Genie Code &amp; Compute</div>
+
+        <!-- Layer 1: The bundle -->
+        <div class="arch-group">
+          <div class="arch-group-label">genie-build-waves bundle (DABs &mdash; Git Folder)</div>
+          <div class="arch-layer">
+            <div class="arch-box accent-lava">
+              <div class="box-title">Setup Job</div>
+              <div class="box-sub">setup_build_waves_job.ipynb</div>
+              <span class="box-tag box-tag-lava">SDK</span>
+            </div>
+            <div class="arch-box accent-lava">
+              <img class="box-logo" src="https://cdn.bfldr.com/9AYANS2F/at/np65jmhvm6xfs8fzctvc4h/lakeflow-jobs-lockup-no-db-full-color-white.svg" alt=""><div class="box-title">Build Job</div>
+              <div class="box-sub">build_waves.job.yml<br>placeholder &rarr; dynamic tasks</div>
+              <span class="box-tag box-tag-lava">for_each</span>
+            </div>
+            <div class="arch-box accent-lava">
+              <div class="box-title">Smoke Job</div>
+              <div class="box-sub">nonce echo + capability_probe</div>
+              <span class="box-tag box-tag-lava">verify</span>
+            </div>
+          </div>
+          <div class="arch-group-label" style="margin-top: 12px; margin-bottom: 0;">src/skills/ &mdash; SKILL.md prompt files</div>
+        </div>
+
+        <div class="arch-arrow">&darr;
+          <div class="arch-arrow-label">setup job publishes skills &rarr; UC</div>
+        </div>
+
+        <!-- Layer 2: Unity Catalog -->
+        <div class="arch-group">
+          <div class="arch-group-label">Unity Catalog &mdash; catalog.schema</div>
+          <div class="arch-layer">
+            <div class="arch-box accent-blue">
+              <div class="box-title">genie_build_session_runner</div>
+              <div class="box-sub">UC Skill<br>runner_skill_id</div>
+              <span class="box-tag box-tag-blue">Skill</span>
+            </div>
+            <div class="arch-box accent-blue">
+              <div class="box-title">genie_build_wave_integrator</div>
+              <div class="box-sub">UC Skill<br>integrator_skill_id</div>
+              <span class="box-tag box-tag-blue">Skill</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-arrow">&darr;
+          <div class="arch-arrow-label">genie_task references skill by id</div>
+        </div>
+
+        <!-- Layer 3: Build Job Task Graph (per wave) -->
+        <div class="arch-group" style="max-width: 100%;">
+          <div class="arch-group-label">Build Job &mdash; Task Graph per Wave (generated by setup notebook)</div>
+          <div class="arch-flow">
+            <div class="arch-flow-row">
+              <div class="arch-flow-col">
+                <div class="arch-box accent-green">
+                  <div class="box-title">Session 01</div>
+                  <div class="box-sub">genie_task<br>edit / execute / configure</div>
+                </div>
+              </div>
+              <div class="arch-flow-col">
+                <div class="arch-box accent-green">
+                  <div class="box-title">Session 02</div>
+                  <div class="box-sub">genie_task<br>edit / execute / configure</div>
+                </div>
+              </div>
+              <div class="arch-flow-col">
+                <div class="arch-box accent-green">
+                  <div class="box-title">Session N</div>
+                  <div class="box-sub">genie_task<br>edit / execute / configure</div>
+                </div>
+              </div>
+            </div>
+            <div class="arch-arrow">&darr; <span class="arch-arrow-label">run_if: ALL_DONE</span></div>
+            <div class="arch-layer">
+              <div class="arch-box accent-blue">
+                <div class="box-title">Integrator</div>
+                <div class="box-sub">genie_task (single)<br>collect status &middot; commit &middot; gate JSON</div>
+              </div>
+            </div>
+            <div class="arch-arrow">&darr; <span class="arch-arrow-label">run_if: ALL_DONE</span></div>
+            <div class="arch-layer">
+              <div class="arch-box accent-yellow">
+                <img class="box-logo" src="https://cdn.bfldr.com/9AYANS2F/at/vp6c9wh4nh994r28bvsxx/notebooks-lockup-no-db-full-color-white-alt.svg" alt=""><div class="box-title">Gate Notebook</div>
+                <div class="box-sub">wave_gate_check.ipynb<br>reads status files + gate JSON</div>
+              </div>
+            </div>
+            <div class="arch-arrow">&darr;</div>
+            <div class="arch-layer">
+              <div class="arch-box accent-green">
+                <div class="box-title">Gate Check</div>
+                <div class="box-sub">If/else condition task<br>gate_passed == "true"</div>
+              </div>
+            </div>
+            <div class="arch-arrow">&darr; <span class="arch-arrow-label">true &rarr; next wave &middot; false &rarr; cascade exclude</span></div>
+          </div>
+        </div>
+
+        <!-- Layer 4: Genie Code + Compute -->
+        <div class="arch-arrow">&darr;
+          <div class="arch-arrow-label">each genie_task invokes</div>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-box accent-lava wide">
+            <img class="box-logo" src="https://cdn.bfldr.com/9AYANS2F/at/rh53wtgbws8wjr24trqxk5/genie-code-lockup-no-db-stacked-full-color-white.svg" alt="">
+            <div class="box-title">Genie Code (Scheduled Insights API)</div>
+            <div class="box-sub">loads UC Skill prompt &middot; receives session_id + plan &middot; writes status JSON</div>
+          </div>
+        </div>
+
+        <div class="arch-arrow">&darr;
+          <div class="arch-arrow-label">runs on</div>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-box wide">
+            <div class="box-title">Serverless Compute</div>
+            <div class="box-sub">CPU or GPU &middot; no cluster provisioning &middot; auto-scaling</div>
+          </div>
+        </div>
+
+        <!-- Side: Project + Status -->
+        <div class="arch-divider"></div>
+        <div class="arch-layer">
+          <div class="arch-side">
+            <div class="arch-group-label">Target Project (separate Git Folder)</div>
+            <div class="arch-box accent-green" style="min-width: 220px;">
+              <div class="box-title">Project Files</div>
+              <div class="box-sub">docs/plans/ &middot; docs/sessions/<br>owned_paths per session</div>
+            </div>
+          </div>
+          <div class="arch-side">
+            <div class="arch-group-label">Build State (ephemeral)</div>
+            <div class="arch-box" style="min-width: 220px;">
+              <div class="box-title">.build-status/</div>
+              <div class="box-sub">session_XX_status.json<br>wave_N_gate.json &middot; runtime.json</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-legend">
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-lava"></span> Bundle / Jobs / Genie Code</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-blue"></span> Unity Catalog / Integrator</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-green"></span> Sessions / Gate Check</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-yellow"></span> Gate Notebook</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-navy"></span> Compute / State</div>
+        </div>
+      </div>
+
+      <!-- ── Diagram 2: Skills & UC Relationship ─────────────── -->
+      <div class="arch-diagram">
+        <div class="arch-title">Skills Pipeline &mdash; From SKILL.md to Genie Code Session</div>
+
+        <div class="arch-layer">
+          <div class="arch-box accent-lava">
+            <div class="box-title">SKILL.md files</div>
+            <div class="box-sub">src/skills/<br>genie-build-session-runner/<br>genie-build-wave-integrator/</div>
+            <span class="box-tag box-tag-lava">source</span>
+          </div>
+        </div>
+        <div class="arch-arrow">&darr;
+          <div class="arch-arrow-label">setup notebook: w.ai_gateway.create_skill()</div>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-box accent-blue">
+            <img class="box-logo" src="https://cdn.bfldr.com/9AYANS2F/at/q7vqbv3b7hx9r52tcv2fgkhb/unity-catalog-lockup-no-db-full-color-white.svg" alt=""><div class="box-title">Unity Catalog</div>
+            <div class="box-sub">{catalog}.{schema}.<br>genie_build_session_runner<br>genie_build_wave_integrator</div>
+            <span class="box-tag box-tag-blue">UC Skill</span>
+          </div>
+        </div>
+        <div class="arch-arrow">&darr;
+          <div class="arch-arrow-label">genie_task.configuration_id references skill</div>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-box accent-green">
+            <img class="box-logo" src="https://cdn.bfldr.com/9AYANS2F/at/rh53wtgbws8wjr24trqxk5/genie-code-lockup-no-db-stacked-full-color-white.svg" alt=""><div class="box-title">Genie Code Task</div>
+            <div class="box-sub">genie_task in for_each<br>loads skill prompt from UC<br>+ session params (session_id, plan, owned_paths)</div>
+          </div>
+        </div>
+        <div class="arch-arrow">&darr;
+          <div class="arch-arrow-label">Genie Code executes on serverless</div>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-box">
+            <div class="box-title">Session Output</div>
+            <div class="box-sub">.build-status/run_id/<br>session_XX_status.json<br>(status, files, requests, errors)</div>
+          </div>
+        </div>
+        <div class="arch-legend">
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-lava"></span> Source skill files</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-blue"></span> Published to UC</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-green"></span> Invoked at runtime</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-navy"></span> Status output</div>
+        </div>
+      </div>
+
+      <!-- ── Diagram 3: Convergence Architecture ─────────────── -->
+      <div class="arch-diagram">
+        <div class="arch-title">Convergence Wave &mdash; Deploy, Observe, Fix, Redeploy Loop</div>
+
+        <div class="arch-layer">
+          <div class="arch-box accent-green">
+            <img class="box-logo" src="https://cdn.bfldr.com/9AYANS2F/at/rh53wtgbws8wjr24trqxk5/genie-code-lockup-no-db-stacked-full-color-white.svg" alt=""><div class="box-title">converge Session</div>
+            <div class="box-sub">allow_deploy: true<br>allow_execute: true<br>max_attempts: 5</div>
+            <span class="box-tag box-tag-green">single session</span>
+          </div>
+        </div>
+        <div class="arch-arrow">&darr;</div>
+
+        <!-- The loop -->
+        <div class="arch-group" style="border-color: var(--dbx-lava-600);">
+          <div class="arch-group-label" style="color: var(--dbx-lava-500);">Deploy-Diagnose-Fix Loop (up to max_attempts)</div>
+          <div class="arch-flow">
+            <div class="arch-layer">
+              <div class="arch-box accent-lava">
+                <div class="box-title">Deploy</div>
+                <div class="box-sub">bundle deploy --target dev<br>bundle run &lt;resource_key&gt;</div>
+              </div>
+            </div>
+            <div class="arch-arrow">&darr;</div>
+            <div class="arch-layer">
+              <div class="arch-box accent-blue">
+                <div class="box-title">Observe</div>
+                <div class="box-sub">Apps API &rarr; deployment status<br>OTel table &rarr; error logs<br>check severity, patterns, markers</div>
+              </div>
+            </div>
+            <div class="arch-arrow">&darr;</div>
+            <div class="arch-layer">
+              <div class="arch-box accent-yellow">
+                <div class="box-title">Diagnose &amp; Fix</div>
+                <div class="box-sub">read OTel error lines<br>fix code in owned_paths<br>no suppression (must declare)</div>
+              </div>
+            </div>
+            <div class="arch-arrow">&darr;
+              <div class="arch-arrow-label">redeploy &rarr; back to top of loop</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-arrow">&darr;
+          <div class="arch-arrow-label">session passes &rarr; integrator commits</div>
+        </div>
+
+        <!-- Runtime gate -->
+        <div class="arch-group" style="border-color: var(--dbx-yellow-600);">
+          <div class="arch-group-label" style="color: var(--dbx-yellow-600);">Deterministic Runtime Gate (wave_gate_check.ipynb)</div>
+          <div class="arch-layer">
+            <div class="arch-box accent-yellow">
+              <img class="box-logo" src="https://cdn.bfldr.com/9AYANS2F/at/gpbkh62csg3pq59b3xp3h8hp/apps-lockup-no-db-full-color-white.svg" alt=""><div class="box-title">App Check</div>
+              <div class="box-sub">deployment SUCCEEDED<br>app_status RUNNING<br>compute_status ACTIVE</div>
+            </div>
+            <div class="arch-box accent-yellow">
+              <div class="box-title">Soak Window</div>
+              <div class="box-sub">same deployment_id<br>unchanged for soak_minutes<br>default 10 min</div>
+            </div>
+            <div class="arch-box accent-yellow">
+              <div class="box-title">OTel Errors</div>
+              <div class="box-sub">error lines &le; max_errors<br>required_markers matched<br>ignore_patterns excluded</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-arrow">&darr;</div>
+        <div class="arch-layer">
+          <div class="arch-box accent-green">
+            <div class="box-title">Runtime Gate Result</div>
+            <div class="box-sub">RUNNING + stable + clean logs<br>= gate_passed: true</div>
+          </div>
+          <div class="arch-box" style="border-color: var(--dbx-lava-600); background: rgba(255, 54, 33, 0.08);">
+            <div class="box-title">On Failure</div>
+            <div class="box-sub">commit kept as progress<br>repair re-runs converge session<br>starts from committed code</div>
+          </div>
+        </div>
+
+        <div class="arch-legend">
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-lava"></span> Deploy / Fail path</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-blue"></span> Observe / APIs</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-yellow"></span> Runtime gate checks</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-green"></span> Pass / Success</div>
+        </div>
+      </div>
+
+      <!-- ── Diagram 4: Wave Execution Flow ──────────────────── -->
+      <div class="arch-diagram">
+        <div class="arch-title">Wave Execution Flow &mdash; Parallel Sessions &rarr; Integrate &rarr; Gate &rarr; Cascade</div>
+
+        <div class="arch-flow">
+          <!-- Sessions -->
+          <div class="arch-group-label">Wave N Sessions (for_each &mdash; full concurrency)</div>
+          <div class="arch-flow-row">
+            <div class="arch-flow-col">
+              <div class="arch-box accent-green">
+                <div class="box-title">Session A</div>
+                <div class="box-sub">owned_paths: src/a/<br>&rarr; status_A.json</div>
+              </div>
+            </div>
+            <div class="arch-flow-col">
+              <div class="arch-box accent-green">
+                <div class="box-title">Session B</div>
+                <div class="box-sub">owned_paths: src/b/<br>&rarr; status_B.json</div>
+              </div>
+            </div>
+            <div class="arch-flow-col">
+              <div class="arch-box accent-green">
+                <div class="box-title">Session C</div>
+                <div class="box-sub">owned_paths: src/c/<br>&rarr; status_C.json</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="arch-arrow">&darr; <span class="arch-arrow-label">run_if: ALL_DONE</span></div>
+
+          <!-- Integrator -->
+          <div class="arch-group-label">Integration (single Genie Code task)</div>
+          <div class="arch-layer">
+            <div class="arch-box accent-blue wide">
+              <img class="box-logo" src="https://cdn.bfldr.com/9AYANS2F/at/rh53wtgbws8wjr24trqxk5/genie-code-lockup-no-db-stacked-full-color-white.svg" alt=""><div class="box-title">Wave Integrator</div>
+              <div class="box-sub">collect status_A/B/C.json &middot; check stray files<br>git mode: commit by explicit path &rarr; push<br>write wave_N_gate.json (pass/fail + requests)</div>
+            </div>
+          </div>
+
+          <div class="arch-arrow">&darr; <span class="arch-arrow-label">run_if: ALL_DONE</span></div>
+
+          <!-- Gate Notebook -->
+          <div class="arch-group-label">Deterministic Gate (notebook &mdash; independent verification)</div>
+          <div class="arch-layer">
+            <div class="arch-box accent-yellow wide">
+              <img class="box-logo" src="https://cdn.bfldr.com/9AYANS2F/at/vp6c9wh4nh994r28bvsxx/notebooks-lockup-no-db-full-color-white-alt.svg" alt=""><div class="box-title">Gate Notebook</div>
+              <div class="box-sub">reads wave_N_gate.json + every session_XX_status.json<br>for runtime_gate: checks Apps API, soak, OTel error lines<br>sets gate_passed = true | false</div>
+            </div>
+          </div>
+
+          <div class="arch-arrow">&darr;</div>
+
+          <!-- If/else -->
+          <div class="arch-layer">
+            <div class="arch-box accent-green">
+              <div class="box-title">gate_passed = true</div>
+              <div class="box-sub">&rarr; Wave N+1 starts<br>sessions read committed code</div>
+            </div>
+            <div class="arch-box" style="border-color: var(--dbx-lava-600); background: rgba(255, 54, 33, 0.08);">
+              <div class="box-title">gate_passed = false</div>
+              <div class="box-sub">&rarr; Wave N+1..N+x EXCLUDED<br>zero compute on cascade<br>repair only failed wave</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-legend">
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-green"></span> Sessions / Pass</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-blue"></span> Integrator</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-yellow"></span> Gate</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-lava"></span> Fail / Cascade</div>
+        </div>
+      </div>
+
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>Phase</th>
+            <th>Type</th>
+            <th>What happens</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Sessions</strong></td>
+            <td><code>for_each</code> at full wave concurrency</td>
+            <td>Genie Code tasks that each complete one plan file. <code>edit</code> sessions write within <code>owned_paths</code>; <code>execute</code> sessions run notebooks/SQL; <code>configure</code> sessions set up resources.</td>
+          </tr>
+          <tr>
+            <td><strong>Integrator</strong></td>
+            <td>Single Genie Code task, <code>run_if: ALL_DONE</code></td>
+            <td>Collects session status files, checks for stray files, commits by explicit path (the only committer), writes gate JSON.</td>
+          </tr>
+          <tr>
+            <td><strong>Gate</strong></td>
+            <td>Notebook, <code>run_if: ALL_DONE</code></td>
+            <td>Reads the integrator's gate JSON and every session's status file independently. Sets <code>gate_passed</code> to <code>true</code> or <code>false</code>. For convergence waves, also checks app/job/pipeline state, soak stability, and OTel error lines.</td>
+          </tr>
+          <tr>
+            <td><strong>Gate check</strong></td>
+            <td>If/else condition task</td>
+            <td>Checks <code>gate_passed == &quot;true&quot;</code>. If false, all downstream wave tasks are <strong>Excluded</strong> — zero compute on cascade failure.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top: 48px;">Build lifecycle</h3>
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>Phase</th>
+            <th>Waves</th>
+            <th>Sessions</th>
+            <th>Gate</th>
+            <th>Pass means</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Initial build</strong></td>
+            <td>Wide, parallel</td>
+            <td><code>edit</code> / <code>execute</code> / <code>configure</code>, disjoint ownership</td>
+            <td>Static (validate, files, tables)</td>
+            <td>The pieces exist</td>
+          </tr>
+          <tr>
+            <td><strong>Convergence</strong></td>
+            <td>Sequential, one session each</td>
+            <td><code>converge</code>: deploy, read telemetry, fix, redeploy</td>
+            <td>Static + deterministic <code>runtime_gate</code></td>
+            <td>It deploys, runs, stays up, logs are clean</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top: 48px;">Bundle components</h3>
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>Component</th>
+            <th>Path</th>
+            <th>Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Session Runner skill</strong></td>
+            <td><code>src/skills/genie-build-session-runner/SKILL.md</code></td>
+            <td>Prompt for one session: load manifest, read plan, implement within owned paths, validate, write status JSON</td>
+          </tr>
+          <tr>
+            <td><strong>Wave Integrator skill</strong></td>
+            <td><code>src/skills/genie-build-wave-integrator/SKILL.md</code></td>
+            <td>Prompt for per-wave integration: collect status, check strays, commit and push, write gate JSON</td>
+          </tr>
+          <tr>
+            <td><strong>Planner skill</strong></td>
+            <td><code>src/skills/genie-build-planner/SKILL.md</code></td>
+            <td>Meta-skill for decomposing projects into waves and sessions at design time</td>
+          </tr>
+          <tr>
+            <td><strong>Gate check notebook</strong></td>
+            <td><code>src/notebooks/wave_gate_check.ipynb</code></td>
+            <td>Deterministic stop: reads gate + status files; for runtime gates, checks app/job state, soak stability, and OTel error lines</td>
+          </tr>
+          <tr>
+            <td><strong>Setup notebook</strong></td>
+            <td><code>src/notebooks/setup_build_waves_job.ipynb</code></td>
+            <td>Validates the manifest, publishes skills, creates automations, generates the full task graph from the manifest</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top: 48px;">Workflow modes</h3>
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>Mode</th>
+            <th>Sessions write to</th>
+            <th>Integrator commits</th>
+            <th>Use for</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>git</strong> (default)</td>
+            <td>Files in a Git folder</td>
+            <td>Yes, by explicit path to a feature branch</td>
+            <td>Code builds, app development, any Git-tracked project</td>
+          </tr>
+          <tr>
+            <td><strong>workspace</strong></td>
+            <td>Notebooks, queries, tables, dashboards, UC objects</td>
+            <td>No Git — status collection and gates only</td>
+            <td>Data engineering, ML pipelines, migrations, infra setup</td>
+          </tr>
+          <tr>
+            <td><strong>hybrid</strong></td>
+            <td>Mix of file edits and workspace operations</td>
+            <td>Commits file edits only; workspace sessions skip Git</td>
+            <td>Projects that combine code authoring with notebook execution</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- GUARDRAILS -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="guardrails" style="background: var(--surface-secondary);">
+    <div class="container">
+      <span class="eyebrow">Safety</span>
+      <h2>Guardrails</h2>
+      <p class="lead">The framework enforces structural safety rules so that parallel sessions cannot step on each other or on your infrastructure.</p>
+
+      <div class="card-grid" style="margin-top: 32px;">
+        <div class="card">
+          <h3>No path overlap</h3>
+          <p>In <code>git</code>/<code>hybrid</code> modes, two <code>edit</code>-mode sessions in the same wave must not have overlapping <code>owned_paths</code>. This prevents merge conflicts when sessions run in parallel.</p>
+        </div>
+        <div class="card">
+          <h3>Sessions are Git read-only</h3>
+          <p>Only the integrator commits, by explicit path, to a feature branch. Sessions never run Git write commands. <code>main</code>/<code>master</code> are refused as branch targets.</p>
+        </div>
+        <div class="card">
+          <h3>Single-writer deploys</h3>
+          <p>A wave containing a <code>converge</code> or <code>allow_deploy</code> session must have exactly one session. The setup job rejects manifests that break this rule.</p>
+        </div>
+        <div class="card">
+          <h3>Deterministic runtime gates</h3>
+          <p>The gate notebook checks deployment state directly — it does not trust session or integrator reports. It queries the Apps API, Jobs API, and OTel tables itself.</p>
+        </div>
+        <div class="card">
+          <h3>No suppression hiding</h3>
+          <p><code>converge</code> sessions must fix causes, not hide them. Any test skip, compile exclude, <code>@ts-ignore</code>, or swallowed error must be listed in the status file and is surfaced in the gate output.</p>
+        </div>
+        <div class="card">
+          <h3>Build job isolation</h3>
+          <p>Never put the build-waves job in the bundle a <code>converge</code> session deploys. The deploy would reset the running build job mid-flight. Keep orchestration in the genie-build-waves bundle.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- FOOTER -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <footer>
+    <div class="container">
+      <div class="footer-logo">
+        <img src="https://cdn.bfldr.com/9AYANS2F/at/n8vj68cs4fwqfh3x363vsc/primary-lockup-one-color-white-rgb.svg" alt="Databricks">
+      </div>
+      <div class="footer-links">
+        <a href="#what-is-it">Overview</a>
+        <a href="#why-valuable">Value Proposition</a>
+        <a href="#why-genie-code">Genie Code</a>
+        <a href="#getting-started">Preview Requirements</a>
+        <a href="#best-practices">Best Practices</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#guardrails">Guardrails</a>
+      </div>
+      <div class="footer-bottom">
+        Genie Build Waves is a technology preview. Built on Databricks Genie Code, Declarative Automation Bundles, and Lakeflow Jobs.
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
