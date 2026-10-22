@@ -751,14 +751,14 @@
 
     /* ── Best Practice Numbered List ──────────────────────── */
     .bp-list { counter-reset: bp; list-style: none; padding: 0; }
-    .bp-list li {
+    .bp-list > li {
       counter-increment: bp;
       padding: 24px 0 24px 64px;
       border-bottom: 1px solid var(--border-subtle);
       position: relative;
     }
-    .bp-list li:last-child { border-bottom: none; }
-    .bp-list li::before {
+    .bp-list > li:last-child { border-bottom: none; }
+    .bp-list > li::before {
       content: counter(bp);
       position: absolute;
       left: 0; top: 24px;
@@ -769,6 +769,9 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 16px; font-weight: 700;
     }
+    .bp-list ul { list-style: disc; }
+    .bp-list ul li { padding: 4px 0; }
+    .bp-list ul li::marker { color: var(--accent-primary); }
     .bp-list li h3 { margin-bottom: 8px; }
     .bp-list li p { font-size: 15px; }
     .bp-list li .bp-code {
