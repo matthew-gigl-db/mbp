@@ -210,8 +210,6 @@
       border-bottom: 1px solid var(--dbx-navy-700);
       background: rgba(27, 49, 57, 0.6);
     }
-    .gs-brand { display: flex; align-items: center; gap: 8px; color: var(--dbx-white); font-weight: 700; font-size: 14px; }
-    .gs-brand-mark { color: var(--dbx-lava-500); font-size: 16px; }
     .gs-pill {
       font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em;
       padding: 2px 8px; border-radius: 100px;
@@ -226,7 +224,7 @@
     }
     .genie-session.complete .gs-status::before { background: var(--dbx-green-600); box-shadow: 0 0 8px rgba(0, 169, 114, 0.7); animation: none; }
     .gs-body {
-      height: 460px; overflow: hidden;
+      height: 400px; overflow: hidden;
       padding: 20px;
       display: flex; flex-direction: column; gap: 12px;
       scroll-behavior: smooth;
@@ -269,61 +267,20 @@
       animation: gs-spin 0.8s linear infinite;
     }
     .gs-check { color: var(--dbx-green-600); font-weight: 700; }
-    .gs-wave {
-      border: 1px solid var(--dbx-navy-700); border-radius: 10px;
-      padding: 12px 14px; background: rgba(11, 32, 38, 0.6);
+    .gs-link {
+      display: inline-flex; align-items: center; gap: 6px; margin-top: 8px;
+      padding: 5px 10px; border-radius: 6px;
+      border: 1px solid var(--dbx-navy-600); background: rgba(34, 114, 180, 0.08);
+      font-size: 12px; color: var(--dbx-blue-400);
+      transition: background 100ms ease, border-color 100ms ease, transform 100ms ease;
     }
-    .gs-wave.passed { border-color: rgba(0, 169, 114, 0.45); }
-    .gs-wave-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-    .gs-wave-name { color: var(--dbx-white); font-weight: 700; font-size: 13px; font-family: "DM Mono", monospace; }
-    .gs-wave-sub { font-size: 12px; color: var(--dbx-navy-400); }
-    .gs-wave-badge {
-      margin-left: auto;
-      font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em;
-      padding: 2px 8px; border-radius: 100px;
-      background: rgba(255, 54, 33, 0.15); color: var(--dbx-lava-500);
-    }
-    .gs-wave.passed .gs-wave-badge { background: rgba(0, 169, 114, 0.18); color: var(--dbx-green-600); }
-    .gs-sessions { display: flex; flex-direction: column; gap: 6px; }
-    .gs-session {
-      display: grid; grid-template-columns: 28px minmax(0, 1fr) 78px 160px 86px;
-      align-items: center; gap: 10px; font-size: 12px;
-      opacity: 0; transform: translateY(4px);
-      transition: opacity 200ms var(--gs-ease-out), transform 200ms var(--gs-ease-out);
-    }
-    .gs-session.in { opacity: 1; transform: none; }
-    .gs-sid { font-family: "DM Mono", monospace; color: var(--dbx-navy-400); }
-    .gs-sname { color: var(--dbx-navy-300); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .gs-mode { font-family: "DM Mono", monospace; font-size: 11px; color: var(--dbx-blue-400); }
-    .gs-bar { height: 6px; border-radius: 100px; background: var(--dbx-navy-700); overflow: hidden; }
-    .gs-fill {
-      display: block; width: 100%; height: 100%;
-      transform-origin: left; transform: scaleX(0);
-      background: linear-gradient(90deg, var(--dbx-lava-700), var(--dbx-lava-500));
-      transition-property: transform; transition-timing-function: var(--gs-ease-in-out);
-    }
-    .gs-session.running .gs-fill { box-shadow: 0 0 8px rgba(255, 54, 33, 0.6); }
-    .gs-session.done .gs-fill { background: var(--dbx-green-600); }
-    .gs-time { font-family: "DM Mono", monospace; font-size: 11px; color: var(--dbx-navy-400); text-align: right; }
-    .gs-session.done .gs-time::before { content: "\2713  "; color: var(--dbx-green-600); }
-    .gs-wave-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-    .gs-wave-foot:empty { display: none; }
-    .gs-chip {
-      font-family: "DM Mono", monospace; font-size: 11px;
-      padding: 3px 9px; border-radius: 6px;
-      border: 1px solid var(--dbx-navy-600); color: var(--dbx-navy-400);
-      opacity: 0; transform: translateY(4px);
-      transition: opacity 200ms var(--gs-ease-out), transform 200ms var(--gs-ease-out), color 200ms ease, border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
-    }
-    .gs-chip.in { opacity: 1; transform: none; }
-    .gs-chip.ok { color: var(--dbx-green-600); border-color: rgba(0, 169, 114, 0.4); background: rgba(0, 169, 114, 0.08); }
-    .gs-chip-gate.ok { color: var(--dbx-white); background: rgba(0, 169, 114, 0.25); border-color: var(--dbx-green-600); box-shadow: 0 0 10px rgba(0, 169, 114, 0.35); }
+    .gs-link.press { background: rgba(34, 114, 180, 0.25); border-color: var(--dbx-blue-600); transform: scale(0.96); }
     .gs-summary {
-      display: flex; align-items: center; gap: 14px;
       padding: 14px 16px; border-radius: 10px;
       border: 1px solid var(--dbx-green-600); background: rgba(0, 169, 114, 0.1);
       box-shadow: 0 0 24px rgba(0, 169, 114, 0.15);
     }
+    .gs-summary-head { display: flex; align-items: center; gap: 12px; }
     .gs-summary-check {
       flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
       background: var(--dbx-green-600); color: var(--dbx-white);
@@ -331,6 +288,107 @@
     }
     .gs-summary strong { display: block; color: var(--dbx-white); font-size: 14px; }
     .gs-summary-meta { font-size: 12px; color: var(--dbx-navy-300); font-family: "DM Mono", monospace; }
+    .gs-summary-rows {
+      display: grid; grid-template-columns: auto auto auto 1fr; gap: 5px 16px;
+      margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(0, 169, 114, 0.25);
+      font-family: "DM Mono", monospace; font-size: 11px; color: var(--dbx-navy-300);
+    }
+    .gs-summary-rows .w { color: var(--dbx-white); }
+    .gs-summary-rows .ok { color: var(--dbx-green-600); }
+    .gs-summary-rows .dim { color: var(--dbx-navy-400); }
+
+    /* Workspace tabs + view switching (Genie Code <-> Lakeflow Jobs run) */
+    .gs-tabs {
+      display: flex; gap: 2px; padding: 8px 12px 0;
+      background: var(--dbx-navy-800); border-bottom: 1px solid var(--dbx-navy-700);
+    }
+    .gs-tab {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 14px; border-radius: 8px 8px 0 0;
+      border: 1px solid transparent; border-bottom: none;
+      font-size: 12px; color: var(--dbx-navy-400); white-space: nowrap;
+      transition: color 200ms ease, background 200ms ease, border-color 200ms ease, opacity 300ms var(--gs-ease-out), transform 300ms var(--gs-ease-out);
+    }
+    .gs-tab-icon { color: var(--dbx-lava-500); }
+    .gs-tab-job { opacity: 0; transform: translateY(4px); }
+    .genie-session.job-open .gs-tab-job { opacity: 1; transform: none; }
+    .genie-session[data-view="genie"] .gs-tab-genie,
+    .genie-session[data-view="job"] .gs-tab-job {
+      background: var(--dbx-navy-900); color: var(--dbx-white);
+      border-color: var(--dbx-navy-700); box-shadow: inset 0 2px 0 var(--dbx-lava-600);
+    }
+    .gs-views { display: grid; }
+    .gs-view {
+      grid-area: 1 / 1; display: flex; flex-direction: column; min-width: 0;
+      visibility: visible;
+      transition: opacity 300ms var(--gs-ease-out), transform 300ms var(--gs-ease-out), visibility 0s;
+    }
+    .genie-session[data-view="genie"] .gs-view-job,
+    .genie-session[data-view="job"] .gs-view-genie {
+      opacity: 0; transform: translateY(6px); visibility: hidden;
+      transition: opacity 200ms ease, transform 200ms ease, visibility 0s 200ms;
+    }
+    .gs-logo { height: 22px; width: auto; display: block; }
+
+    /* Lakeflow Jobs run view */
+    .gj-title { color: var(--dbx-white); font-weight: 700; font-size: 14px; }
+    .gj-run { font-family: "DM Mono", monospace; font-size: 12px; color: var(--dbx-navy-400); }
+    .gj-status {
+      margin-left: auto;
+      font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 3px 10px; border-radius: 100px;
+      background: rgba(144, 165, 177, 0.15); color: var(--dbx-navy-300);
+      transition: background 200ms ease, color 200ms ease;
+    }
+    .gj-status.running { background: rgba(34, 114, 180, 0.22); color: var(--dbx-blue-400); }
+    .gj-status.succeeded { background: rgba(0, 169, 114, 0.22); color: var(--dbx-green-600); }
+    .gj-meta {
+      display: flex; flex-wrap: wrap; gap: 8px 20px;
+      padding: 10px 20px; font-size: 12px; color: var(--dbx-navy-400);
+    }
+    .gj-meta b { color: var(--dbx-white); font-weight: 500; }
+    .gj-progress { height: 3px; background: var(--dbx-navy-700); }
+    .gj-progress-fill {
+      display: block; width: 100%; height: 100%;
+      transform-origin: left; transform: scaleX(0);
+      background: linear-gradient(90deg, var(--dbx-lava-600), var(--dbx-green-600));
+      transition: transform 400ms var(--gs-ease-in-out);
+    }
+    .gj-graph { flex: 1; display: flex; align-items: flex-start; justify-content: center; gap: 8px; padding: 20px; }
+    .gj-col {
+      flex: 1; min-width: 0; max-width: 250px;
+      display: flex; flex-direction: column; gap: 6px;
+      padding: 10px; border: 1px dashed var(--dbx-navy-600); border-radius: 10px;
+      transition: border-color 300ms ease;
+    }
+    .gj-col.running { border-color: rgba(255, 54, 33, 0.5); }
+    .gj-col.passed { border-style: solid; border-color: rgba(0, 169, 114, 0.55); }
+    .gj-col-head {
+      display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px;
+      font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dbx-navy-400);
+    }
+    .gj-col.running .gj-col-state { color: var(--dbx-lava-500); }
+    .gj-col.passed .gj-col-state { color: var(--dbx-green-600); }
+    .gj-arrow { align-self: center; color: var(--dbx-navy-500); font-size: 16px; }
+    .gj-task {
+      display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; align-items: center; gap: 8px;
+      padding: 7px 9px; border-radius: 6px;
+      background: var(--dbx-navy-800); border: 1px solid var(--dbx-navy-700);
+      font-family: "DM Mono", monospace; font-size: 11px; color: var(--dbx-navy-500);
+      transition: border-color 200ms ease, box-shadow 200ms ease, color 200ms ease;
+    }
+    .gj-kind { text-align: center; }
+    .gj-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gj-dur { font-size: 10px; white-space: nowrap; }
+    .gj-task.running { border-color: var(--dbx-lava-600); color: var(--dbx-white); box-shadow: 0 0 10px rgba(255, 54, 33, 0.35); }
+    .gj-task.running .gj-kind, .gj-task.running .gj-dur { color: var(--dbx-lava-500); }
+    .gj-task.succeeded { border-color: rgba(0, 169, 114, 0.55); color: var(--dbx-navy-300); }
+    .gj-task.succeeded .gj-kind, .gj-task.succeeded .gj-dur { color: var(--dbx-green-600); }
+    .gj-legend {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px;
+      padding: 10px 20px 14px; border-top: 1px solid var(--dbx-navy-700);
+      font-size: 11px; color: var(--dbx-navy-500);
+    }
     .gs-input {
       display: flex; align-items: center; gap: 10px;
       padding: 12px 16px;
@@ -354,8 +412,10 @@
     @keyframes gs-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
     @keyframes gs-blink { 50% { opacity: 0; } }
     @media (max-width: 768px) {
-      .gs-session { grid-template-columns: 24px minmax(0, 1fr) 90px 70px; }
-      .gs-mode, .gs-title { display: none; }
+      .gs-title, .gj-run { display: none; }
+      .gj-graph { flex-direction: column; align-items: stretch; }
+      .gj-col { max-width: none; }
+      .gj-arrow { transform: rotate(90deg); }
     }
     @media (prefers-reduced-motion: reduce) {
       .genie-session *, .genie-session *::before, .genie-session *::after { animation: none !important; transition: none !important; }
@@ -849,17 +909,44 @@
       </div>
 
       <!-- Animated Genie Code session — driven by the script at the end of <body> -->
-      <div class="genie-session" id="genie-session" role="img" aria-label="Animated Genie Code session running a Genie Build Waves build: waves of parallel sessions, each passing a deterministic gate before the next wave starts">
-        <div class="gs-header">
-          <div class="gs-brand"><span class="gs-brand-mark">&#10022;</span><span>Genie Code</span></div>
-          <span class="gs-pill">Agent</span>
-          <span class="gs-title">genie-build-waves &middot; customer-360</span>
-          <span class="gs-status">Idle</span>
+      <div class="genie-session" id="genie-session" data-view="genie" role="img" aria-label="Animated demo: a Genie Code session deploys the bundle and triggers the genie_build_waves Lakeflow Job; the job runs waves of parallel Genie Code tasks, each wave passing a gate; Genie Code then polls the finished run and summarizes the build">
+        <div class="gs-tabs" aria-hidden="true">
+          <span class="gs-tab gs-tab-genie"><span class="gs-tab-icon">&#10022;</span>Genie Code</span>
+          <span class="gs-tab gs-tab-job"><span class="gs-tab-icon">&#9656;</span>Jobs &amp; Pipelines &rsaquo; [dev] genie_build_waves</span>
         </div>
-        <div class="gs-body" aria-hidden="true"></div>
-        <div class="gs-input" aria-hidden="true">
-          <div class="gs-input-box"><span class="gs-input-text"></span><span class="gs-caret"></span></div>
-          <div class="gs-send">&uarr;</div>
+        <div class="gs-views" aria-hidden="true">
+          <!-- View 1: Genie Code session -->
+          <div class="gs-view gs-view-genie">
+            <div class="gs-header">
+              <img class="gs-logo" src="https://cdn.bfldr.com/9AYANS2F/at/2x894frtq656jgfnctc3wfxf/genie-code-lockup-no-db-full-color-white.svg" alt="Genie Code">
+              <span class="gs-pill">Agent</span>
+              <span class="gs-title">customer-360</span>
+              <span class="gs-status">Idle</span>
+            </div>
+            <div class="gs-body"></div>
+            <div class="gs-input">
+              <div class="gs-input-box"><span class="gs-input-text"></span><span class="gs-caret"></span></div>
+              <div class="gs-send">&uarr;</div>
+            </div>
+          </div>
+          <!-- View 2: Lakeflow Jobs run page -->
+          <div class="gs-view gs-view-job">
+            <div class="gs-header">
+              <img class="gs-logo" src="https://cdn.bfldr.com/9AYANS2F/at/np65jmhvm6xfs8fzctvc4h/lakeflow-jobs-lockup-no-db-full-color-white.svg" alt="Lakeflow Jobs">
+              <span class="gj-title">[dev] genie_build_waves</span>
+              <span class="gj-run">Run 884213</span>
+              <span class="gj-status">Pending</span>
+            </div>
+            <div class="gj-meta">
+              <span>Triggered by <b>Genie Code</b></span>
+              <span>Compute <b>Serverless</b></span>
+              <span>Tasks <b class="gj-count">0/14</b> succeeded</span>
+              <span>Duration <b class="gj-elapsed">0m00s</b></span>
+            </div>
+            <div class="gj-progress"><span class="gj-progress-fill"></span></div>
+            <div class="gj-graph"></div>
+            <div class="gj-legend"><span>&#10022; genie_task</span><span>&#9636; notebook_task</span><span>&#9671; condition_task</span><span>cascade-exclude on gate fail</span></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1764,124 +1851,167 @@ databricks bundle run setup_build_waves --target dev -p run_smoke=true
           (meta ? '<span class="gs-tool-meta">' + meta + '</span>' : '') + '<span class="gs-check">&#10003;</span>';
       }
 
-      function wave(name, sub) {
-        return add(el('div', 'gs-wave',
-          '<div class="gs-wave-head"><span class="gs-wave-name">' + name + '</span>' +
-          '<span class="gs-wave-sub">' + sub + '</span><span class="gs-wave-badge">running</span></div>' +
-          '<div class="gs-sessions"></div><div class="gs-wave-foot"></div>'));
+      // ── Lakeflow Jobs run view ──
+      var graph = root.querySelector('.gj-graph');
+      var jobStatus = root.querySelector('.gj-status');
+      var jobCount = root.querySelector('.gj-count');
+      var jobElapsed = root.querySelector('.gj-elapsed');
+      var jobFill = root.querySelector('.gj-progress-fill');
+      var KIND = { genie: '&#10022;', notebook: '&#9636;', condition: '&#9671;' };
+      var WAVES = [
+        { label: 'Wave 0 &middot; foundation', sessions: [['w0_session_01', 1300, '1m12s']], gate: [700, '0m38s'], elapsed: '1m58s' },
+        { label: 'Wave 1 &middot; parallel', sessions: [['w1_session_02', 1900, '3m41s'], ['w1_session_03', 2500, '4m05s'], ['w1_session_04', 1500, '2m58s']], gate: [700, '0m44s'], elapsed: '7m31s' },
+        { label: 'Wave 2 &middot; converge', sessions: [['w2_session_05', 2700, '6m20s']], converge: true, gate: [1100, '10m31s'], elapsed: '18m16s' }
+      ];
+      var TOTAL = 14, doneCount = 0;
+
+      function setView(v) { root.setAttribute('data-view', v); }
+      function setJobStatus(s) { jobStatus.className = 'gj-status ' + s.toLowerCase(); jobStatus.textContent = s; }
+      function tick() {
+        doneCount++;
+        jobCount.textContent = doneCount + '/' + TOTAL;
+        jobFill.style.transform = 'scaleX(' + (doneCount / TOTAL) + ')';
       }
-      function session(w, id, name, mode) {
-        var r = el('div', 'gs-session',
-          '<span class="gs-sid">' + id + '</span><span class="gs-sname">' + name + '</span>' +
-          '<span class="gs-mode">' + mode + '</span><span class="gs-bar"><span class="gs-fill"></span></span>' +
-          '<span class="gs-time">queued</span>');
-        w.querySelector('.gs-sessions').appendChild(r);
-        return show(r);
+      function task(col, kind, name) {
+        var t = el('div', 'gj-task',
+          '<span class="gj-kind">' + KIND[kind] + '</span><span class="gj-name">' + name + '</span><span class="gj-dur"></span>');
+        col.appendChild(t);
+        return t;
       }
-      async function progress(r, frac, ms) {
-        var f = r.querySelector('.gs-fill');
-        f.style.transitionDuration = (reduce ? 0 : ms) + 'ms';
-        requestAnimationFrame(function () { f.style.transform = 'scaleX(' + frac + ')'; });
-        await sleep(ms);
+      function setTask(t, state, dur) { t.className = 'gj-task ' + state; t.querySelector('.gj-dur').textContent = dur || ''; }
+      async function runTask(t, ms, dur) { setTask(t, 'running', 'running'); await sleep(ms); setTask(t, 'succeeded', dur); tick(); }
+      function colState(c, s) {
+        c.col.className = 'gj-col ' + s;
+        c.col.querySelector('.gj-col-state').textContent = s === 'passed' ? 'gate passed' : s;
       }
-      async function runSession(r, ms, elapsed) {
-        r.classList.add('running');
-        r.querySelector('.gs-time').textContent = 'running';
-        await progress(r, 1, ms);
-        r.classList.remove('running');
-        r.classList.add('done');
-        r.querySelector('.gs-time').textContent = elapsed;
+
+      function buildGraph() {
+        graph.innerHTML = '';
+        doneCount = 0;
+        jobCount.textContent = '0/' + TOTAL;
+        jobFill.style.transform = 'scaleX(0)';
+        jobElapsed.textContent = '0m00s';
+        setJobStatus('Pending');
+        return WAVES.map(function (w, i) {
+          if (i > 0) graph.appendChild(el('span', 'gj-arrow', '&rarr;'));
+          var col = el('div', 'gj-col',
+            '<div class="gj-col-head"><span>' + w.label + '</span><span class="gj-col-state">pending</span></div>');
+          graph.appendChild(col);
+          var n = 'w' + i;
+          return {
+            col: col,
+            sessions: w.sessions.map(function (s) { return task(col, 'genie', s[0]); }),
+            integrator: task(col, 'genie', n + '_integrator'),
+            gate: task(col, 'notebook', n + '_gate'),
+            check: task(col, 'condition', n + '_gate_check')
+          };
+        });
       }
-      function chip(w, cls, text) {
-        var c = el('span', 'gs-chip ' + cls, text);
-        w.querySelector('.gs-wave-foot').appendChild(c);
-        show(c);
-        return c;
-      }
-      async function gate(w, steps) {
-        await sleep(250);
-        for (var i = 0; i < steps.length; i++) {
-          var c = chip(w, '', steps[i]);
-          await sleep(450);
-          c.classList.add('ok');
+
+      async function runJob(cols) {
+        setJobStatus('Running');
+        for (var i = 0; i < WAVES.length; i++) {
+          var w = WAVES[i], c = cols[i];
+          colState(c, 'running');
+          if (w.converge) {
+            // converge session: deploy → observe → fix loop, visible as attempts
+            var t = c.sessions[0], step = w.sessions[0][1] / 3;
+            setTask(t, 'running', 'attempt 1/5');
+            for (var a = 2; a <= 3; a++) { await sleep(step); t.querySelector('.gj-dur').textContent = 'attempt ' + a + '/5'; }
+            await sleep(step);
+            setTask(t, 'succeeded', w.sessions[0][2]);
+            tick();
+          } else {
+            await Promise.all(w.sessions.map(function (s, k) { return runTask(c.sessions[k], s[1], s[2]); }));
+          }
+          await runTask(c.integrator, 650, '0m41s');
+          await runTask(c.gate, w.gate[0], w.gate[1]);
+          await runTask(c.check, 300, '0m01s');
+          colState(c, 'passed');
+          jobElapsed.textContent = w.elapsed;
+          await sleep(250);
         }
-        var g = chip(w, 'gs-chip-gate', '&#9670; gate_check');
-        await sleep(600);
-        g.classList.add('ok');
-        g.innerHTML = '&#9670; gate passed';
-        w.classList.add('passed');
-        w.querySelector('.gs-wave-badge').textContent = 'gate passed';
-        scroll();
-        await sleep(400);
+        setJobStatus('Succeeded');
       }
 
       async function run() {
         body.innerHTML = '';
-        root.classList.remove('complete');
+        root.classList.remove('complete', 'job-open');
+        setView('genie');
+        var cols = buildGraph();
         status.textContent = 'Idle';
         await sleep(600);
 
-        await type('Run genie-build-waves on customer-360 using docs/plans/waves.json', 26);
+        // 1. Genie Code session kicks off the build
+        await type('Deploy genie-build-waves and build customer-360 from docs/plans/waves.json', 24);
         await sleep(350);
         var prompt = input.textContent;
         input.textContent = '';
         add(el('div', 'gs-msg gs-user', prompt));
         status.textContent = 'Thinking';
-
         await sleep(400);
         var thinking = add(el('div', 'gs-thinking', '<span class="gs-shimmer">Thinking&hellip;</span>'));
-        await sleep(1200);
+        await sleep(1100);
         thinking.remove();
         add(el('div', 'gs-msg gs-agent',
-          'I&rsquo;ll validate the manifest, generate the wave task graph, and start the build. ' +
-          'Sessions in a wave run in parallel; each wave must pass its gate before the next one starts.'));
-        status.textContent = 'Running';
-        await sleep(600);
+          'I&rsquo;ll validate the manifest, deploy the bundle, generate the wave task graph, and trigger the build job.'));
+        status.textContent = 'Working';
+        await sleep(500);
 
         var t = tool('&#9636;', 'Read file', 'docs/plans/waves.json');
-        await sleep(700); toolDone(t, '3 waves &middot; 5 sessions');
-        await sleep(250);
+        await sleep(650); toolDone(t, '3 waves &middot; 5 sessions');
+        await sleep(200);
+        t = tool('&gt;_', 'Run CLI', 'databricks bundle deploy -t dev');
+        await sleep(1000); toolDone(t, 'deployed');
+        await sleep(200);
         t = tool('&#9881;', 'Run job', 'setup_build_waves_job');
-        await sleep(1100); toolDone(t, '17 tasks generated');
-        await sleep(350);
-
-        // Wave 0 — single foundation session
-        var w = wave('Wave 0', 'foundation');
-        var s = session(w, '01', 'UC schemas, volumes &amp; grants', 'configure');
+        await sleep(900); toolDone(t, '14 tasks generated');
+        await sleep(200);
+        t = tool('&#9656;', 'Run job', 'genie_build_waves');
+        await sleep(700); toolDone(t, 'run 884213 started');
         await sleep(300);
-        await runSession(s, 1500, '1m12s');
-        await gate(w, ['&#8674; integrate']);
+        var handoff = add(el('div', 'gs-msg gs-agent',
+          'The build is now running as a <strong>Lakeflow Job</strong> on serverless compute &mdash; each session is a Genie Code task, ' +
+          'and every wave must pass its gate before the next one starts. I&rsquo;ll poll the run and summarize when it finishes.' +
+          '<br><span class="gs-link">View run 884213 &#8599;</span>'));
+        await sleep(500);
+        var poll = tool('&#8635;', 'Get job run', '884213');
+        poll.querySelector('.gs-tool-state').insertAdjacentHTML('afterbegin', '<span class="gs-tool-meta">RUNNING</span>');
+        status.textContent = 'Waiting on job';
+        await sleep(900);
 
-        // Wave 1 — three sessions in parallel
-        w = wave('Wave 1', 'parallel build');
-        var a = session(w, '02', 'Express API routes', 'edit');
-        var b = session(w, '03', 'React dashboard UI', 'edit');
-        var c = session(w, '04', 'Feature pipeline notebook', 'execute');
-        await sleep(350);
-        await Promise.all([runSession(a, 2100, '3m41s'), runSession(b, 2800, '4m05s'), runSession(c, 1700, '2m58s')]);
-        await gate(w, ['&#8674; integrate', '&#9095; commit a41f9c2']);
+        // 2. Open the Lakeflow Jobs run and watch the waves execute
+        var link = handoff.querySelector('.gs-link');
+        link.classList.add('press');
+        await sleep(180);
+        link.classList.remove('press');
+        root.classList.add('job-open');
+        setView('job');
+        await sleep(500);
+        await runJob(cols);
+        await sleep(1600);
 
-        // Wave 2 — convergence: deploy, observe, fix until stable
-        w = wave('Wave 2', 'converge');
-        var v = session(w, '05', 'Deploy app &middot; observe &middot; fix', 'converge');
+        // 3. Back to Genie Code: poll result, read gate files, summarize
+        setView('genie');
+        await sleep(450);
+        toolDone(poll, 'SUCCEEDED &middot; 14/14 tasks');
+        status.textContent = 'Summarizing';
+        await sleep(500);
+        t = tool('&#9636;', 'Read files', '.build-status/884213/wave_*_gate.json');
+        await sleep(800); toolDone(t, '3/3 gates passed');
         await sleep(300);
-        v.classList.add('running');
-        var attempts = [[1, 0.34], [2, 0.67], [3, 1]];
-        for (var i = 0; i < attempts.length; i++) {
-          v.querySelector('.gs-time').textContent = 'attempt ' + attempts[i][0] + '/5';
-          await progress(v, attempts[i][1], 950);
-          await sleep(150);
-        }
-        v.classList.remove('running');
-        v.classList.add('done');
-        v.querySelector('.gs-time').textContent = '6m20s';
-        await gate(w, ['app RUNNING', 'soak 10m stable', 'OTel errors 0']);
-
         status.textContent = 'Complete';
         root.classList.add('complete');
         add(el('div', 'gs-summary',
-          '<div class="gs-summary-check">&#10003;</div><div><strong>Build complete</strong>' +
-          '<span class="gs-summary-meta">3 waves &middot; 5 sessions &middot; 0 failures &middot; 0 compute wasted &middot; 18m16s</span></div>'));
+          '<div class="gs-summary-head"><div class="gs-summary-check">&#10003;</div><div>' +
+          '<strong>Build complete &mdash; run 884213 succeeded</strong>' +
+          '<span class="gs-summary-meta">3 waves &middot; 5 Genie Code sessions &middot; 0 failures &middot; 0 compute wasted &middot; 18m16s</span>' +
+          '</div></div>' +
+          '<div class="gs-summary-rows">' +
+          '<span class="w">Wave 0</span><span class="dim">1 session</span><span class="ok">gate passed</span><span class="dim">UC schemas, volumes &amp; grants</span>' +
+          '<span class="w">Wave 1</span><span class="dim">3 parallel</span><span class="ok">gate passed</span><span class="dim">API &middot; UI &middot; pipeline &middot; commit a41f9c2</span>' +
+          '<span class="w">Wave 2</span><span class="dim">converge</span><span class="ok">gate passed</span><span class="dim">app RUNNING &middot; soak 10m &middot; 0 OTel errors</span>' +
+          '</div>'));
       }
 
       async function loop() {
