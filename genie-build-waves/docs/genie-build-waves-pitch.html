@@ -354,36 +354,61 @@
       background: linear-gradient(90deg, var(--dbx-lava-600), var(--dbx-green-600));
       transition: transform 400ms var(--gs-ease-in-out);
     }
-    .gj-graph { flex: 1; display: flex; align-items: flex-start; justify-content: center; gap: 8px; padding: 20px; }
-    .gj-col {
-      flex: 1; min-width: 0; max-width: 250px;
-      display: flex; flex-direction: column; gap: 6px;
-      padding: 10px; border: 1px dashed var(--dbx-navy-600); border-radius: 10px;
-      transition: border-color 300ms ease;
+    /* Run timeline (modeled on the Lakeflow Jobs run timeline view) */
+    .gt { flex: 1; display: flex; flex-direction: column; padding: 10px 20px 12px; }
+    .gt-axis, .gt-row { display: grid; grid-template-columns: 180px minmax(0, 1fr); }
+    .gt-axis { height: 18px; font-family: "DM Mono", monospace; font-size: 10px; color: var(--dbx-navy-500); }
+    .gt-ticks { position: relative; }
+    .gt-tick { position: absolute; top: 2px; padding-left: 4px; }
+    .gt-row { height: 22px; align-items: center; border-radius: 3px; }
+    .gt-row.alt { background: rgba(255, 255, 255, 0.025); }
+    .gt-name {
+      display: flex; align-items: center; gap: 6px; min-width: 0; padding-left: 4px;
+      font-family: "DM Mono", monospace; font-size: 11px; color: var(--dbx-blue-400);
+      white-space: nowrap; overflow: hidden;
     }
-    .gj-col.running { border-color: rgba(255, 54, 33, 0.5); }
-    .gj-col.passed { border-style: solid; border-color: rgba(0, 169, 114, 0.55); }
-    .gj-col-head {
-      display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px;
-      font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dbx-navy-400);
+    .gt-label { overflow: hidden; text-overflow: ellipsis; transition: color 200ms ease; }
+    .gt-chev { width: 10px; flex-shrink: 0; font-size: 9px; color: var(--dbx-navy-500); }
+    .gt-badge {
+      margin-left: auto; margin-right: 10px; padding: 0 5px; border-radius: 4px;
+      font-size: 10px; background: var(--dbx-navy-700); color: var(--dbx-navy-300);
     }
-    .gj-col.running .gj-col-state { color: var(--dbx-lava-500); }
-    .gj-col.passed .gj-col-state { color: var(--dbx-green-600); }
-    .gj-arrow { align-self: center; color: var(--dbx-navy-500); font-size: 16px; }
-    .gj-task {
-      display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; align-items: center; gap: 8px;
-      padding: 7px 9px; border-radius: 6px;
-      background: var(--dbx-navy-800); border: 1px solid var(--dbx-navy-700);
-      font-family: "DM Mono", monospace; font-size: 11px; color: var(--dbx-navy-500);
-      transition: border-color 200ms ease, box-shadow 200ms ease, color 200ms ease;
+    .gt-iter .gt-name { padding-left: 22px; }
+    .gt-ok {
+      flex-shrink: 0; width: 12px; height: 12px; border-radius: 50%;
+      border: 1.5px solid var(--dbx-navy-600); color: transparent;
+      display: inline-flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 700;
+      transition: border-color 200ms ease, color 200ms ease;
     }
-    .gj-kind { text-align: center; }
-    .gj-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .gj-dur { font-size: 10px; white-space: nowrap; }
-    .gj-task.running { border-color: var(--dbx-lava-600); color: var(--dbx-white); box-shadow: 0 0 10px rgba(255, 54, 33, 0.35); }
-    .gj-task.running .gj-kind, .gj-task.running .gj-dur { color: var(--dbx-lava-500); }
-    .gj-task.succeeded { border-color: rgba(0, 169, 114, 0.55); color: var(--dbx-navy-300); }
-    .gj-task.succeeded .gj-kind, .gj-task.succeeded .gj-dur { color: var(--dbx-green-600); }
+    .gt-iter.running .gt-ok { border-color: var(--dbx-lava-500); }
+    .gt-iter.succeeded .gt-ok { border-color: var(--dbx-green-600); color: var(--dbx-green-600); }
+    .gt-track {
+      position: relative; height: 100%;
+      background-image: linear-gradient(to right, rgba(97, 135, 148, 0.18) 1px, transparent 1px);
+      background-size: 25% 100%;
+    }
+    .gt-bar {
+      position: absolute; top: 5px; bottom: 5px; min-width: 3px;
+      border-radius: 2px; background: rgba(255, 255, 255, 0.04); overflow: hidden;
+      transition: box-shadow 200ms ease;
+    }
+    .gt-fill {
+      display: block; width: 100%; height: 100%;
+      transform-origin: left; transform: scaleX(0);
+      background: var(--dbx-lava-600);
+      transition-property: transform; transition-timing-function: linear;
+    }
+    .gt-row.running .gt-bar { box-shadow: 0 0 10px rgba(255, 54, 33, 0.45); }
+    .gt-row.running .gt-label { color: var(--dbx-white); }
+    .gt-row.succeeded .gt-fill { background: var(--dbx-green-600); }
+    .gt-dur {
+      position: absolute; top: 50%; transform: translateY(-50%); margin-left: 6px;
+      font-family: "DM Mono", monospace; font-size: 10px; color: var(--dbx-navy-300); white-space: nowrap;
+    }
+    .gt-row.running .gt-dur { color: var(--dbx-lava-500); }
+    .gt-swatch { display: inline-block; width: 10px; height: 6px; border-radius: 1px; margin-right: 6px; vertical-align: middle; }
+    .gt-swatch.run { background: var(--dbx-lava-600); }
+    .gt-swatch.ok { background: var(--dbx-green-600); }
     .gj-legend {
       display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px;
       padding: 10px 20px 14px; border-top: 1px solid var(--dbx-navy-700);
@@ -413,9 +438,8 @@
     @keyframes gs-blink { 50% { opacity: 0; } }
     @media (max-width: 768px) {
       .gs-title, .gj-run { display: none; }
-      .gj-graph { flex-direction: column; align-items: stretch; }
-      .gj-col { max-width: none; }
-      .gj-arrow { transform: rotate(90deg); }
+      .gt-axis, .gt-row { grid-template-columns: 124px minmax(0, 1fr); }
+      .gt-badge { display: none; }
     }
     @media (prefers-reduced-motion: reduce) {
       .genie-session *, .genie-session *::before, .genie-session *::after { animation: none !important; transition: none !important; }
@@ -940,12 +964,15 @@
             <div class="gj-meta">
               <span>Triggered by <b>Genie Code</b></span>
               <span>Compute <b>Serverless</b></span>
-              <span>Tasks <b class="gj-count">0/14</b> succeeded</span>
+              <span>Tasks <b class="gj-count">0/12</b> succeeded</span>
               <span>Duration <b class="gj-elapsed">0m00s</b></span>
             </div>
             <div class="gj-progress"><span class="gj-progress-fill"></span></div>
-            <div class="gj-graph"></div>
-            <div class="gj-legend"><span>&#10022; genie_task</span><span>&#9636; notebook_task</span><span>&#9671; condition_task</span><span>cascade-exclude on gate fail</span></div>
+            <div class="gt">
+              <div class="gt-axis"><span></span><div class="gt-ticks"></div></div>
+              <div class="gt-rows"></div>
+            </div>
+            <div class="gj-legend"><span><i class="gt-swatch run"></i>running</span><span><i class="gt-swatch ok"></i>succeeded</span><span>&#8635; for_each iterations</span><span>gate_check false &rarr; downstream waves excluded</span></div>
           </div>
         </div>
       </div>
@@ -1852,18 +1879,21 @@ databricks bundle run setup_build_waves --target dev -p run_smoke=true
       }
 
       // ── Lakeflow Jobs run view ──
-      var graph = root.querySelector('.gj-graph');
+      var rowsEl = root.querySelector('.gt-rows');
+      var ticksEl = root.querySelector('.gt-ticks');
       var jobStatus = root.querySelector('.gj-status');
       var jobCount = root.querySelector('.gj-count');
       var jobElapsed = root.querySelector('.gj-elapsed');
       var jobFill = root.querySelector('.gj-progress-fill');
-      var KIND = { genie: '&#10022;', notebook: '&#9636;', condition: '&#9671;' };
-      var WAVES = [
-        { label: 'Wave 0 &middot; foundation', sessions: [['w0_session_01', 1300, '1m12s']], gate: [700, '0m38s'], elapsed: '1m58s' },
-        { label: 'Wave 1 &middot; parallel', sessions: [['w1_session_02', 1900, '3m41s'], ['w1_session_03', 2500, '4m05s'], ['w1_session_04', 1500, '2m58s']], gate: [700, '0m44s'], elapsed: '7m31s' },
-        { label: 'Wave 2 &middot; converge', sessions: [['w2_session_05', 2700, '6m20s']], converge: true, gate: [1100, '10m31s'], elapsed: '18m16s' }
+      // Simulated run in seconds. Each wave starts when the previous wave's gate_check finishes.
+      // iters = for_each iterations of wN_sessions (one Genie Code task each).
+      var PLAN = [
+        { iters: [72], integrate: 41.2, gate: 28.6, check: 1.4 },
+        { iters: [221, 245, 178], expand: true, integrate: 52.4, gate: 26.5, check: 1.5 },
+        { iters: [380], converge: true, integrate: 41.0, gate: 631, check: 1.7 }
       ];
-      var TOTAL = 14, doneCount = 0;
+      var SCALE = 1720;           // timeline width in simulated seconds (leaves room for duration labels)
+      var TOTAL = 12, doneCount = 0;
 
       function setView(v) { root.setAttribute('data-view', v); }
       function setJobStatus(s) { jobStatus.className = 'gj-status ' + s.toLowerCase(); jobStatus.textContent = s; }
@@ -1872,64 +1902,93 @@ databricks bundle run setup_build_waves --target dev -p run_smoke=true
         jobCount.textContent = doneCount + '/' + TOTAL;
         jobFill.style.transform = 'scaleX(' + (doneCount / TOTAL) + ')';
       }
-      function task(col, kind, name) {
-        var t = el('div', 'gj-task',
-          '<span class="gj-kind">' + KIND[kind] + '</span><span class="gj-name">' + name + '</span><span class="gj-dur"></span>');
-        col.appendChild(t);
-        return t;
+      function fmt(s) {
+        if (s < 60) return s.toFixed(1) + 's';
+        s = Math.round(s);
+        var m = Math.floor(s / 60), r = s % 60;
+        return m + 'm ' + (r < 10 ? '0' : '') + r + 's';
       }
-      function setTask(t, state, dur) { t.className = 'gj-task ' + state; t.querySelector('.gj-dur').textContent = dur || ''; }
-      async function runTask(t, ms, dur) { setTask(t, 'running', 'running'); await sleep(ms); setTask(t, 'succeeded', dur); tick(); }
-      function colState(c, s) {
-        c.col.className = 'gj-col ' + s;
-        c.col.querySelector('.gj-col-state').textContent = s === 'passed' ? 'gate passed' : s;
+      function pct(s) { return (s / SCALE * 100).toFixed(2) + '%'; }
+      function realMs(sim) { return Math.min(2500, Math.max(260, sim * 9)); }  // time-lapse, short tasks stay visible
+
+      function row(name, start, dur, opts) {
+        opts = opts || {};
+        var r = el('div', 'gt-row' + (opts.iter ? ' gt-iter' : ''),
+          '<div class="gt-name">' +
+            (opts.iter ? '<span class="gt-ok">&#10003;</span>' : '<span class="gt-chev">' + (opts.chev || '') + '</span>') +
+            '<span class="gt-label">' + name + '</span>' +
+            (opts.badge ? '<span class="gt-badge">&#8635; ' + opts.badge + '</span>' : '') +
+          '</div>' +
+          '<div class="gt-track">' +
+            '<span class="gt-bar" style="left:' + pct(start) + ';width:' + pct(dur) + '"><span class="gt-fill"></span></span>' +
+            '<span class="gt-dur" style="left:' + pct(start + dur) + '"></span>' +
+          '</div>');
+        if (rowsEl.children.length % 2) r.classList.add('alt');
+        rowsEl.appendChild(r);
+        return { row: r, fill: r.querySelector('.gt-fill'), dur: r.querySelector('.gt-dur'), sim: dur, end: start + dur };
       }
 
       function buildGraph() {
-        graph.innerHTML = '';
+        rowsEl.innerHTML = '';
+        ticksEl.innerHTML = '';
+        for (var k = 0; k < 4; k++) {
+          var tk = el('span', 'gt-tick', Math.round(SCALE * k / 4 / 60) + 'm');
+          tk.style.left = (k * 25) + '%';
+          ticksEl.appendChild(tk);
+        }
         doneCount = 0;
         jobCount.textContent = '0/' + TOTAL;
         jobFill.style.transform = 'scaleX(0)';
-        jobElapsed.textContent = '0m00s';
+        jobElapsed.textContent = '0m 00s';
         setJobStatus('Pending');
-        return WAVES.map(function (w, i) {
-          if (i > 0) graph.appendChild(el('span', 'gj-arrow', '&rarr;'));
-          var col = el('div', 'gj-col',
-            '<div class="gj-col-head"><span>' + w.label + '</span><span class="gj-col-state">pending</span></div>');
-          graph.appendChild(col);
-          var n = 'w' + i;
-          return {
-            col: col,
-            sessions: w.sessions.map(function (s) { return task(col, 'genie', s[0]); }),
-            integrator: task(col, 'genie', n + '_integrator'),
-            gate: task(col, 'notebook', n + '_gate'),
-            check: task(col, 'condition', n + '_gate_check')
-          };
+        var t = 0;
+        return PLAN.map(function (p, i) {
+          var n = 'w' + i, longest = Math.max.apply(null, p.iters);
+          var w = { p: p };
+          w.sessions = row(n + '_sessions', t, longest, { chev: p.expand ? '&#9662;' : '&#9656;', badge: p.iters.length });
+          w.iters = p.expand ? p.iters.map(function (d, k) { return row('Iteration ' + (k + 1), t, d, { iter: true }); }) : [];
+          t += longest;
+          w.integrate = row(n + '_integrate', t, p.integrate); t += p.integrate;
+          w.gate = row(n + '_gate', t, p.gate, { chev: '&#9656;' }); t += p.gate;
+          w.check = row(n + '_gate_check', t, p.check); t += p.check;
+          return w;
         });
       }
 
-      async function runJob(cols) {
+      // Fill a task's bar left-to-right while it runs, then mark it succeeded with its duration.
+      async function animBar(r, runningText) {
+        var ms = realMs(r.sim);
+        r.row.classList.add('running');
+        r.dur.textContent = runningText || '';
+        r.fill.style.transitionDuration = (reduce ? 0 : ms) + 'ms';
+        requestAnimationFrame(function () { r.fill.style.transform = 'scaleX(1)'; });
+        await sleep(ms);
+        r.row.classList.remove('running');
+        r.row.classList.add('succeeded');
+        r.dur.textContent = fmt(r.sim);
+      }
+      function complete(r) { tick(); jobElapsed.textContent = fmt(r.end); }
+
+      async function runJob(waves) {
         setJobStatus('Running');
-        for (var i = 0; i < WAVES.length; i++) {
-          var w = WAVES[i], c = cols[i];
-          colState(c, 'running');
-          if (w.converge) {
-            // converge session: deploy → observe → fix loop, visible as attempts
-            var t = c.sessions[0], step = w.sessions[0][1] / 3;
-            setTask(t, 'running', 'attempt 1/5');
-            for (var a = 2; a <= 3; a++) { await sleep(step); t.querySelector('.gj-dur').textContent = 'attempt ' + a + '/5'; }
-            await sleep(step);
-            setTask(t, 'succeeded', w.sessions[0][2]);
-            tick();
+        for (var i = 0; i < waves.length; i++) {
+          var w = waves[i];
+          if (w.p.converge) {
+            // converge session: deploy → observe → fix loop, surfaced as attempts
+            var ms = realMs(w.sessions.sim);
+            var pending = animBar(w.sessions, 'attempt 1/5');
+            await sleep(ms / 3); w.sessions.dur.textContent = 'attempt 2/5';
+            await sleep(ms / 3); w.sessions.dur.textContent = 'attempt 3/5';
+            await pending;
           } else {
-            await Promise.all(w.sessions.map(function (s, k) { return runTask(c.sessions[k], s[1], s[2]); }));
+            // for_each parent + its iterations run concurrently
+            await Promise.all([animBar(w.sessions)].concat(w.iters.map(function (r) { return animBar(r); })));
           }
-          await runTask(c.integrator, 650, '0m41s');
-          await runTask(c.gate, w.gate[0], w.gate[1]);
-          await runTask(c.check, 300, '0m01s');
-          colState(c, 'passed');
-          jobElapsed.textContent = w.elapsed;
-          await sleep(250);
+          complete(w.sessions);
+          await animBar(w.integrate); complete(w.integrate);
+          await animBar(w.gate, w.p.converge ? 'soak window\u2026' : ''); complete(w.gate);
+          await animBar(w.check); complete(w.check);
+          await sleep(200);
         }
         setJobStatus('Succeeded');
       }
@@ -1965,7 +2024,7 @@ databricks bundle run setup_build_waves --target dev -p run_smoke=true
         await sleep(1000); toolDone(t, 'deployed');
         await sleep(200);
         t = tool('&#9881;', 'Run job', 'setup_build_waves_job');
-        await sleep(900); toolDone(t, '14 tasks generated');
+        await sleep(900); toolDone(t, '12 tasks generated');
         await sleep(200);
         t = tool('&#9656;', 'Run job', 'genie_build_waves');
         await sleep(700); toolDone(t, 'run 884213 started');
@@ -1994,7 +2053,7 @@ databricks bundle run setup_build_waves --target dev -p run_smoke=true
         // 3. Back to Genie Code: poll result, read gate files, summarize
         setView('genie');
         await sleep(450);
-        toolDone(poll, 'SUCCEEDED &middot; 14/14 tasks');
+        toolDone(poll, 'SUCCEEDED &middot; 12/12 tasks');
         status.textContent = 'Summarizing';
         await sleep(500);
         t = tool('&#9636;', 'Read files', '.build-status/884213/wave_*_gate.json');
@@ -2005,7 +2064,7 @@ databricks bundle run setup_build_waves --target dev -p run_smoke=true
         add(el('div', 'gs-summary',
           '<div class="gs-summary-head"><div class="gs-summary-check">&#10003;</div><div>' +
           '<strong>Build complete &mdash; run 884213 succeeded</strong>' +
-          '<span class="gs-summary-meta">3 waves &middot; 5 Genie Code sessions &middot; 0 failures &middot; 0 compute wasted &middot; 18m16s</span>' +
+          '<span class="gs-summary-meta">3 waves &middot; 5 Genie Code sessions &middot; 0 failures &middot; 0 compute wasted &middot; 25m 22s</span>' +
           '</div></div>' +
           '<div class="gs-summary-rows">' +
           '<span class="w">Wave 0</span><span class="dim">1 session</span><span class="ok">gate passed</span><span class="dim">UC schemas, volumes &amp; grants</span>' +
