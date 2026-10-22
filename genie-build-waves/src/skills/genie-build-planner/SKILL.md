@@ -111,6 +111,8 @@ For custom agents and MCP servers (still `type: app`), `RUNNING` does not prove 
 
 For a Genie space (`type: genie_space`), set `id` (titles are not unique; read it from `bundle summary` or the Genie list). The gate checks it statically: updated in this run, warehouse attached, every table and metric view resolves, `column_configs` match the current columns, example SQL passes `EXPLAIN`. Put its converge wave after the waves that build its tables and metric views. If the wave may leave the space unchanged, set `require_fresh_deployment: false`. The build job's identity needs `CAN_EDIT` on the space to read its configuration. Add 2 to 5 `probe_questions` the space must always answer with SQL (simple counts or totals over its main metric views, phrased the way users ask). Keep `probe_mode: warn` unless the user wants questions to block the wave.
 
+For a pipeline with expectations, set `stability.max_failed_records` (and `max_dropped_records` for `expect_or_drop` rules) from what the data allows; `0` only if every rule must hold on every row. Prefer pipelines that publish their event log to Unity Catalog (`event_log` in the pipeline spec): the gate reads metrics from that table.
+
 If a target depends on something outside the project (another bundle's secrets, infra grants), either put a `configure` wave before it or list it as a `manual_prereqs` entry. A converge session will stop as `blocked` rather than work around it.
 
 ## Step 4: Write plan files

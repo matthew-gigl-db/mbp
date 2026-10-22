@@ -11,7 +11,7 @@ Design record for extending `runtime_targets` beyond `app | job | pipeline`. Ori
 | 3 | `genie_space` type, static checks | **Implemented** (2026-10-22) |
 | 4 | `genie_space` probe questions | **Implemented** (2026-10-22) |
 | 5 | Live proof and smoke coverage: `probe_auth` service principal from a real job run; Genie space `CAN_EDIT` in the smoke job | **Implemented** (2026-10-22); accepted-SP pass path needs a `CAN_USE` grant or fresh secret |
-| 6 | Pipeline data quality: expectation failures, dropped records | Planned (third) |
+| 6 | Pipeline data quality: expectation failures, dropped records | **Implemented** (2026-10-22) |
 | 7 | `table` type: data assertions (exists, rows, columns, freshness) | Planned (fourth) |
 
 Execution order: 5, 4, 6, 7. Phase 5 first because it closes the open risk in shipped work (Phases 2 and 3). Each phase is committed and pushed on its own.
@@ -130,7 +130,20 @@ Original plan:
 * Run the smoke job for real with a manifest whose app target has `probes` and `probe_auth`, and record the result (pass, or the exact failure and fix).
 * Smoke `app_probe_check` also checks every `genie_space` target: the space resolves, and `get_space(include_serialized_space=True)` works as the job identity (the gate needs `CAN_EDIT`). `fail` on a missing grant, so the build doesn't discover it at the gate.
 
-## Phase 6 (planned): pipeline data quality
+## Phase 6 (implemented): pipeline data quality
+
+**As built.** `check_pipeline` reads the checked update's `flow_progress` data quality (only when a limit is set) through `_pipeline_data_quality`: from the pipeline's UC event log table if `spec.event_log` is set (parameterized SQL on `origin.update_id`), else `list_pipeline_events(filter="update_id = '...'")`. It sums `dropped_records`, `warned_records` and per-expectation `failed_records`, and lists failing expectations by count. Setup validates the limits.
+
+Findings (28 pipelines in the workspace):
+
+* The events API filter rejects `event_type = ...` and `event_type IN (...)` ("operation not allowed"); `update_id = '...'` works. Event type is filtered client-side.
+* Pipelines that publish their event log to UC returned no events from the API and no updates from `list_updates` (old updates), while their tables keep full history. The table is the durable source.
+* `data_quality` is `{dropped_records, warned_records, expectations?}`; `expectations` appears only on flows that define them. Batch flows report once, on the `COMPLETED` event, so summing is correct.
+* `warned_records` counts rows, `failed_records` counts rule hits: one flow had 29 warned rows and 131 failed records across 5 rules. The budget is on `failed_records`.
+* Real update (`ncpdp_segments_etl`, warn-only expectations): 145 failed records over 11 expectations, equal to an independent `explode` sum. `max_failed_records: 0` fails with the top rules named; `200` passes.
+* Not verified: an events API update that contains expectation metrics (no such update in this workspace).
+
+Original plan:
 
 Fields on `pipeline` targets, under `stability`:
 

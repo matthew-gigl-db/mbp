@@ -52,6 +52,14 @@
       ],
       "stability": {"soak_minutes": 20}
     },
+    "etl_pipeline": {
+      "type": "pipeline",
+      "name": "[dev] my-app ETL",
+      "bundle_root": "/Workspace/Users/you@example.com/my-app",
+      "bundle_target": "dev",
+      "deploy_commands": ["bundle deploy --target dev", "bundle run etl_pipeline --target dev"],
+      "stability": {"soak_minutes": 0, "max_failed_records": 0, "max_dropped_records": 100}
+    },
     "ops_dashboard": {
       "type": "dashboard",
       "name": "[dev your_name] My App Ops",
