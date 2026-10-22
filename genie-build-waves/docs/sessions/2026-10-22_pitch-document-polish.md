@@ -69,6 +69,7 @@ Replaced the per-wave columnar task cards with a Gantt-style timeline:
 | `b20fa0d` | fix: use white product lockups in dark mode for Why Genie Code cards |
 | `9f21771` | fix: nested bullets in Best Practices no longer get numbered circles |
 | `8fc83dc` | docs: make deploy steps 4-5 actionable; fix smoke-test flag |
+| `e30eafb` | docs: app scaffolding command is `databricks apps init`, not `apps create` (Best Practice #2) |
 
 ## Files Modified
 
