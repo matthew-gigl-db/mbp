@@ -56,6 +56,18 @@ Replaced the per-wave columnar task cards with a Gantt-style timeline:
 - **Step 5:** Explains Excluded cascade, passing sessions already committed, full `jobs repair-run` command with `rerun_dependent_tasks: true`.
 - **Step 3 bug fix:** `-p run_smoke=true` → `--params run_smoke=true` in both the pitch HTML and `README.md`.
 
+### README Accuracy Pass (`9a44b64`)
+
+Checked every README claim against `databricks.yml`, the job YAMLs, the setup and gate notebooks, the skills and `manifest-schema.md`.
+
+- **Skill changes need a deploy.** Setup publishes skills from the deployed copy (`${workspace.file_path}/src/skills`), so editing `SKILL.md` requires `bundle deploy` before setup. Manifest changes need only the setup job (it reads `manifest_path` directly). Fixed in README "Changing a build" and the pitch's Skills card.
+- `converge` added to the session-mode lists.
+- The setup job is run after every deploy; deploy does not trigger it.
+- Architecture table: Build Planner skill row added; setup notebook row covers retries, timeouts and smoke job reset.
+- Runtime gate description covers jobs and pipelines, not only apps.
+- `project_name` listed as optional; step 5 shows `bundle run build_waves` and the per-wave task chain.
+- "Repair re-runs only failed tasks" corrected to re-run from the failed wave with dependents.
+
 ## Commits
 
 | Commit | Description |
@@ -70,6 +82,7 @@ Replaced the per-wave columnar task cards with a Gantt-style timeline:
 | `9f21771` | fix: nested bullets in Best Practices no longer get numbered circles |
 | `8fc83dc` | docs: make deploy steps 4-5 actionable; fix smoke-test flag |
 | `e30eafb` | docs: app scaffolding command is `databricks apps init`, not `apps create` (Best Practice #2) |
+| `9a44b64` | docs: README accuracy pass against bundle source |
 
 ## Files Modified
 
