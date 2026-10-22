@@ -135,7 +135,7 @@ Stop early if fewer than ~15 minutes remain before the task timeout, so you stil
 Run every acceptance-criteria check from your plan. Typical checks by mode:
 
 **`edit`:** `bundle validate --strict --target <bundle_target>` if you touched YAML. Language-specific checks (typecheck, lint, test) if available.
-**`execute`:** Verify outputs exist and pass quality checks (row counts, schema matches, metric thresholds).
+**`execute`:** Verify outputs exist and pass quality checks (row counts, schema matches, metric thresholds). If the wave's `runtime_gate` lists `type: table` targets you own, check them the way the gate will: the table resolves, has every `required_columns`, `COUNT(*) >= min_rows`, and (unless `require_fresh_deployment: false`) your run wrote it: a new `DESCRIBE HISTORY` commit, or a new refresh for a materialized view. Re-running an idempotent write that changes nothing still commits; skipping it does not.
 **`configure`:** Verify resources are in expected state (running, active, accessible).
 **`converge`:** The last attempt is classified `stable` for every runtime target, plus `bundle validate --strict` for each target's bundle. `status: "pass"` requires both. A deploy that succeeded earlier but not on the final code does not count.
 

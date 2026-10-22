@@ -12,16 +12,20 @@
     "PROJECT_MEMORY.md",
     "docs/data-dictionary.md"
   ],
+  "runtime_targets": {
+    "features": {"type": "table", "name": "catalog.schema.features", "min_rows": 1, "required_columns": ["customer_id"]},
+    "train_set": {"type": "table", "name": "catalog.schema.train_set", "min_rows": 1, "required_columns": ["customer_id", "label"]},
+    "test_set": {"type": "table", "name": "catalog.schema.test_set", "min_rows": 1, "required_columns": ["customer_id", "label"]}
+  },
   "waves": [
     {
       "wave_id": "0",
       "name": "Data Preparation",
       "concurrency": 1,
       "gate": [
-        "Table catalog.schema.features has >0 rows",
-        "Table catalog.schema.train_set has >0 rows",
-        "Table catalog.schema.test_set has >0 rows"
+        "Session 01 status pass"
       ],
+      "runtime_gate": ["features", "train_set", "test_set"],
       "sessions": [
         {
           "session_id": "01",

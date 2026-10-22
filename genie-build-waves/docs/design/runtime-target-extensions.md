@@ -12,7 +12,7 @@ Design record for extending `runtime_targets` beyond `app | job | pipeline`. Ori
 | 4 | `genie_space` probe questions | **Implemented** (2026-10-22) |
 | 5 | Live proof and smoke coverage: `probe_auth` service principal from a real job run; Genie space `CAN_EDIT` in the smoke job | **Implemented** (2026-10-22); accepted-SP pass path needs a `CAN_USE` grant or fresh secret |
 | 6 | Pipeline data quality: expectation failures, dropped records | **Implemented** (2026-10-22) |
-| 7 | `table` type: data assertions (exists, rows, columns, freshness) | Planned (fourth) |
+| 7 | `table` type: data assertions (exists, rows, columns, freshness) | **Implemented** (2026-10-22) |
 
 Execution order: 5, 4, 6, 7. Phase 5 first because it closes the open risk in shipped work (Phases 2 and 3). Each phase is committed and pushed on its own.
 
@@ -154,7 +154,24 @@ Fields on `pipeline` targets, under `stability`:
 * Read the checked update's `flow_progress` events from the pipeline event log: `data_quality.dropped_records` and `data_quality.expectations[].failed_records`, summed per flow and expectation. Only checked when a limit is set.
 * Report per-expectation counts in `wave_<N>_runtime.json`, so the converge session sees which rule failed. `expect_or_fail` violations already fail the update.
 
-## Phase 7 (planned): `table` data assertions
+## Phase 7 (implemented): `table` data assertions
+
+**As built.** `check_table`: `w.tables.get`, `required_columns` against UC columns, `COUNT(*)` on the notebook's serverless Spark (no warehouse needed, unlike the plan), and freshness from `_table_last_write`. Setup validates `catalog.schema.table`, `required_columns`, `min_rows`; gate timeout +10 min. `examples/workspace-waves.json` now gates its tables with `runtime_gate` instead of free-text "> 0 rows" lines.
+
+Findings (one object of each type in this workspace):
+
+| Type | `DESCRIBE HISTORY` | Freshness source used | `COUNT(*)` |
+|---|---|---|---|
+| `MANAGED` (Delta) | works | last commit | 3 s / 42K rows |
+| `STREAMING_TABLE` | works (`STREAMING UPDATE`) | last commit | under 1 s |
+| `MATERIALIZED_VIEW` | fails ("is a view") | `DESCRIBE EXTENDED ... AS JSON` `refresh_information.last_refreshed_at` | under 1 s |
+| `VIEW`, `METRIC_VIEW` | fails ("is a view") | none: skipped | works (metric view: 50K rows) |
+| `FOREIGN` (Postgres) | fails (Delta only) | none: skipped | 8 s |
+
+* History timestamps read through `unix_millis(timestamp)` match UC `updated_at` to the second, so no time zone drift.
+* 11 cases pass as expected: fresh and stale for Delta, streaming table and MV against two run starts; view and metric view freshness skipped; missing column; `min_rows` too high; table not found.
+
+Original plan:
 
 For `workspace`-mode builds, whose output is tables rather than deployments. Replaces free-text gate lines like "table has > 0 rows".
 
