@@ -190,45 +190,176 @@
     .btn .arrow { transition: transform 0.2s ease; }
     .btn:hover .arrow { transform: translateX(4px); }
 
-    /* ── Wave Diagram ─────────────────────────────────────── */
-    .wave-diagram {
+    /* ── Genie Code Session (animated hero build) ─────────── */
+    .genie-session {
+      --gs-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --gs-ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+      margin: 64px auto 0;
+      max-width: 880px;
       background: var(--dbx-navy-900);
-      border-radius: 16px;
-      padding: 40px;
-      margin-top: 64px;
       border: 1px solid var(--dbx-navy-700);
-      overflow-x: auto;
-    }
-    .wave-diagram .wave-row {
-      display: flex; align-items: center; gap: 16px;
-      margin-bottom: 12px;
-      font-family: "DM Mono", monospace;
-      font-size: 14px;
-      color: var(--dbx-navy-400);
-      white-space: nowrap;
-    }
-    .wave-diagram .wave-label { color: var(--dbx-white); font-weight: 500; min-width: 80px; }
-    .wave-diagram .session-box {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 6px;
-      background: var(--dbx-navy-700);
-      border: 1px solid var(--dbx-navy-600);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
       color: var(--dbx-navy-300);
-      margin: 0 4px;
+      text-align: left;
     }
-    .wave-diagram .phase {
-      padding: 4px 12px;
-      border-radius: 6px;
-      font-size: 13px;
+    .gs-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--dbx-navy-700);
+      background: rgba(27, 49, 57, 0.6);
     }
-    .wave-diagram .phase-integrate { background: rgba(34, 114, 180, 0.2); color: var(--dbx-blue-400); }
-    .wave-diagram .phase-gate { background: rgba(255, 171, 0, 0.2); color: var(--dbx-yellow-600); }
-    .wave-diagram .phase-check { background: rgba(0, 169, 114, 0.2); color: var(--dbx-green-600); }
-    .wave-diagram .arrow-down {
-      color: var(--dbx-navy-500);
-      margin-left: 100px;
-      font-size: 18px;
+    .gs-brand { display: flex; align-items: center; gap: 8px; color: var(--dbx-white); font-weight: 700; font-size: 14px; }
+    .gs-brand-mark { color: var(--dbx-lava-500); font-size: 16px; }
+    .gs-pill {
+      font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 2px 8px; border-radius: 100px;
+      background: rgba(255, 54, 33, 0.15); color: var(--dbx-lava-500);
+    }
+    .gs-title { margin-left: auto; font-family: "DM Mono", monospace; font-size: 12px; color: var(--dbx-navy-400); }
+    .gs-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dbx-navy-300); min-width: 84px; }
+    .gs-status::before {
+      content: ""; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--dbx-lava-600); box-shadow: 0 0 8px rgba(255, 54, 33, 0.7);
+      animation: gs-pulse 1.4s ease-in-out infinite;
+    }
+    .genie-session.complete .gs-status::before { background: var(--dbx-green-600); box-shadow: 0 0 8px rgba(0, 169, 114, 0.7); animation: none; }
+    .gs-body {
+      height: 460px; overflow: hidden;
+      padding: 20px;
+      display: flex; flex-direction: column; gap: 12px;
+      scroll-behavior: smooth;
+      transition: opacity 300ms ease;
+    }
+    .gs-body.fade { opacity: 0; }
+    .gs-body > * {
+      flex-shrink: 0;
+      opacity: 0; transform: translateY(8px);
+      transition: opacity 200ms var(--gs-ease-out), transform 200ms var(--gs-ease-out), border-color 300ms ease;
+    }
+    .gs-body > .in { opacity: 1; transform: none; }
+    .gs-msg { font-size: 14px; line-height: 1.55; max-width: 85%; }
+    .gs-user {
+      align-self: flex-end;
+      background: var(--dbx-navy-700); color: var(--dbx-white);
+      padding: 10px 14px; border-radius: 12px 12px 4px 12px;
+    }
+    .gs-agent { color: var(--dbx-navy-300); }
+    .gs-thinking { font-size: 13px; }
+    .gs-shimmer {
+      background: linear-gradient(90deg, var(--dbx-navy-500) 0%, var(--dbx-white) 50%, var(--dbx-navy-500) 100%);
+      background-size: 200% 100%;
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      animation: gs-shimmer 1.5s linear infinite;
+    }
+    .gs-tool {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; padding: 8px 12px;
+      border: 1px solid var(--dbx-navy-700); border-radius: 8px;
+      background: rgba(20, 61, 74, 0.35);
+    }
+    .gs-tool-icon { color: var(--dbx-lava-500); width: 16px; text-align: center; }
+    .gs-tool-label { color: var(--dbx-white); font-weight: 500; }
+    .gs-tool-detail, .gs-tool-meta { font-family: "DM Mono", monospace; font-size: 12px; color: var(--dbx-navy-400); }
+    .gs-tool-state { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .gs-spin {
+      display: inline-block; width: 12px; height: 12px;
+      border: 2px solid var(--dbx-navy-600); border-top-color: var(--dbx-lava-500); border-radius: 50%;
+      animation: gs-spin 0.8s linear infinite;
+    }
+    .gs-check { color: var(--dbx-green-600); font-weight: 700; }
+    .gs-wave {
+      border: 1px solid var(--dbx-navy-700); border-radius: 10px;
+      padding: 12px 14px; background: rgba(11, 32, 38, 0.6);
+    }
+    .gs-wave.passed { border-color: rgba(0, 169, 114, 0.45); }
+    .gs-wave-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .gs-wave-name { color: var(--dbx-white); font-weight: 700; font-size: 13px; font-family: "DM Mono", monospace; }
+    .gs-wave-sub { font-size: 12px; color: var(--dbx-navy-400); }
+    .gs-wave-badge {
+      margin-left: auto;
+      font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 2px 8px; border-radius: 100px;
+      background: rgba(255, 54, 33, 0.15); color: var(--dbx-lava-500);
+    }
+    .gs-wave.passed .gs-wave-badge { background: rgba(0, 169, 114, 0.18); color: var(--dbx-green-600); }
+    .gs-sessions { display: flex; flex-direction: column; gap: 6px; }
+    .gs-session {
+      display: grid; grid-template-columns: 28px minmax(0, 1fr) 78px 160px 86px;
+      align-items: center; gap: 10px; font-size: 12px;
+      opacity: 0; transform: translateY(4px);
+      transition: opacity 200ms var(--gs-ease-out), transform 200ms var(--gs-ease-out);
+    }
+    .gs-session.in { opacity: 1; transform: none; }
+    .gs-sid { font-family: "DM Mono", monospace; color: var(--dbx-navy-400); }
+    .gs-sname { color: var(--dbx-navy-300); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gs-mode { font-family: "DM Mono", monospace; font-size: 11px; color: var(--dbx-blue-400); }
+    .gs-bar { height: 6px; border-radius: 100px; background: var(--dbx-navy-700); overflow: hidden; }
+    .gs-fill {
+      display: block; width: 100%; height: 100%;
+      transform-origin: left; transform: scaleX(0);
+      background: linear-gradient(90deg, var(--dbx-lava-700), var(--dbx-lava-500));
+      transition-property: transform; transition-timing-function: var(--gs-ease-in-out);
+    }
+    .gs-session.running .gs-fill { box-shadow: 0 0 8px rgba(255, 54, 33, 0.6); }
+    .gs-session.done .gs-fill { background: var(--dbx-green-600); }
+    .gs-time { font-family: "DM Mono", monospace; font-size: 11px; color: var(--dbx-navy-400); text-align: right; }
+    .gs-session.done .gs-time::before { content: "\2713  "; color: var(--dbx-green-600); }
+    .gs-wave-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .gs-wave-foot:empty { display: none; }
+    .gs-chip {
+      font-family: "DM Mono", monospace; font-size: 11px;
+      padding: 3px 9px; border-radius: 6px;
+      border: 1px solid var(--dbx-navy-600); color: var(--dbx-navy-400);
+      opacity: 0; transform: translateY(4px);
+      transition: opacity 200ms var(--gs-ease-out), transform 200ms var(--gs-ease-out), color 200ms ease, border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
+    }
+    .gs-chip.in { opacity: 1; transform: none; }
+    .gs-chip.ok { color: var(--dbx-green-600); border-color: rgba(0, 169, 114, 0.4); background: rgba(0, 169, 114, 0.08); }
+    .gs-chip-gate.ok { color: var(--dbx-white); background: rgba(0, 169, 114, 0.25); border-color: var(--dbx-green-600); box-shadow: 0 0 10px rgba(0, 169, 114, 0.35); }
+    .gs-summary {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px; border-radius: 10px;
+      border: 1px solid var(--dbx-green-600); background: rgba(0, 169, 114, 0.1);
+      box-shadow: 0 0 24px rgba(0, 169, 114, 0.15);
+    }
+    .gs-summary-check {
+      flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+      background: var(--dbx-green-600); color: var(--dbx-white);
+      display: flex; align-items: center; justify-content: center; font-weight: 700;
+    }
+    .gs-summary strong { display: block; color: var(--dbx-white); font-size: 14px; }
+    .gs-summary-meta { font-size: 12px; color: var(--dbx-navy-300); font-family: "DM Mono", monospace; }
+    .gs-input {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--dbx-navy-700);
+      background: rgba(27, 49, 57, 0.6);
+    }
+    .gs-input-box { flex: 1; font-size: 14px; color: var(--dbx-white); min-height: 20px; }
+    .gs-input-text:empty::before { content: "Ask Genie Code\2026"; color: var(--dbx-navy-500); }
+    .gs-caret {
+      display: inline-block; width: 2px; height: 16px; margin-left: 1px;
+      background: var(--dbx-lava-500); vertical-align: text-bottom;
+      animation: gs-blink 1s steps(1) infinite;
+    }
+    .gs-send {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: var(--dbx-lava-600); color: var(--dbx-white);
+      display: flex; align-items: center; justify-content: center; font-size: 14px;
+    }
+    @keyframes gs-spin { to { transform: rotate(360deg); } }
+    @keyframes gs-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+    @keyframes gs-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+    @keyframes gs-blink { 50% { opacity: 0; } }
+    @media (max-width: 768px) {
+      .gs-session { grid-template-columns: 24px minmax(0, 1fr) 90px 70px; }
+      .gs-mode, .gs-title { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .genie-session *, .genie-session *::before, .genie-session *::after { animation: none !important; transition: none !important; }
+      .gs-body { scroll-behavior: auto; }
     }
 
     /* ── Architecture Diagrams ────────────────────────────── */
@@ -717,43 +848,18 @@
         </div>
       </div>
 
-      <!-- Wave diagram -->
-      <div class="wave-diagram">
-        <div class="wave-row">
-          <span class="wave-label">Wave 0</span>
-          <span class="session-box">01</span>
-          <span class="arrow-down">&rarr;</span>
-          <span class="phase phase-integrate">integrate</span>
-          <span class="arrow-down">&rarr;</span>
-          <span class="phase phase-gate">gate</span>
-          <span class="arrow-down">&rarr;</span>
-          <span class="phase phase-check">gate_check</span>
+      <!-- Animated Genie Code session — driven by the script at the end of <body> -->
+      <div class="genie-session" id="genie-session" role="img" aria-label="Animated Genie Code session running a Genie Build Waves build: waves of parallel sessions, each passing a deterministic gate before the next wave starts">
+        <div class="gs-header">
+          <div class="gs-brand"><span class="gs-brand-mark">&#10022;</span><span>Genie Code</span></div>
+          <span class="gs-pill">Agent</span>
+          <span class="gs-title">genie-build-waves &middot; customer-360</span>
+          <span class="gs-status">Idle</span>
         </div>
-        <div class="wave-row"><span class="arrow-down">&darr;</span></div>
-        <div class="wave-row">
-          <span class="wave-label">Wave 1</span>
-          <span class="session-box">02</span>
-          <span class="session-box">03</span>
-          <span class="session-box">04</span>
-          <span class="arrow-down">&rarr;</span>
-          <span class="phase phase-integrate">integrate</span>
-          <span class="arrow-down">&rarr;</span>
-          <span class="phase phase-gate">gate</span>
-          <span class="arrow-down">&rarr;</span>
-          <span class="phase phase-check">gate_check</span>
-        </div>
-        <div class="wave-row"><span class="arrow-down">&darr;</span></div>
-        <div class="wave-row">
-          <span class="wave-label">Wave N</span>
-          <span class="session-box">...</span>
-          <span class="arrow-down">&rarr;</span>
-          <span class="phase phase-integrate">integrate</span>
-          <span class="arrow-down">&rarr;</span>
-          <span class="phase phase-gate">gate</span>
-          <span class="arrow-down">&rarr;</span>
-          <span class="phase phase-check">gate_check</span>
-          <span class="arrow-down">&rarr;</span>
-          <span style="color: var(--dbx-white); font-weight: 500;">done</span>
+        <div class="gs-body" aria-hidden="true"></div>
+        <div class="gs-input" aria-hidden="true">
+          <div class="gs-input-box"><span class="gs-input-text"></span><span class="gs-caret"></span></div>
+          <div class="gs-send">&uarr;</div>
         </div>
       </div>
     </div>
@@ -1617,6 +1723,191 @@ databricks bundle run setup_build_waves --target dev -p run_smoke=true
       </div>
     </div>
   </footer>
+
+  <script>
+    /* Animated Genie Code session for the hero. Pure DOM, no network calls.
+       Plays when scrolled into view, loops; renders once (no loop) under reduced motion. */
+    (function () {
+      var root = document.getElementById('genie-session');
+      if (!root) return;
+      var body = root.querySelector('.gs-body');
+      var input = root.querySelector('.gs-input-text');
+      var status = root.querySelector('.gs-status');
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function sleep(ms) { return new Promise(function (r) { setTimeout(r, reduce ? 0 : ms); }); }
+      function el(tag, cls, html) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (html != null) e.innerHTML = html;
+        return e;
+      }
+      function scroll() { body.scrollTop = body.scrollHeight; }
+      function show(node) { requestAnimationFrame(function () { node.classList.add('in'); scroll(); }); return node; }
+      function add(node) { body.appendChild(node); return show(node); }
+
+      async function type(text, speed) {
+        input.textContent = '';
+        if (reduce) { input.textContent = text; return; }
+        for (var i = 0; i < text.length; i++) { input.textContent += text[i]; await sleep(speed); }
+      }
+
+      function tool(icon, label, detail) {
+        return add(el('div', 'gs-tool',
+          '<span class="gs-tool-icon">' + icon + '</span>' +
+          '<span class="gs-tool-label">' + label + '</span>' +
+          '<span class="gs-tool-detail">' + detail + '</span>' +
+          '<span class="gs-tool-state"><span class="gs-spin"></span></span>'));
+      }
+      function toolDone(node, meta) {
+        node.querySelector('.gs-tool-state').innerHTML =
+          (meta ? '<span class="gs-tool-meta">' + meta + '</span>' : '') + '<span class="gs-check">&#10003;</span>';
+      }
+
+      function wave(name, sub) {
+        return add(el('div', 'gs-wave',
+          '<div class="gs-wave-head"><span class="gs-wave-name">' + name + '</span>' +
+          '<span class="gs-wave-sub">' + sub + '</span><span class="gs-wave-badge">running</span></div>' +
+          '<div class="gs-sessions"></div><div class="gs-wave-foot"></div>'));
+      }
+      function session(w, id, name, mode) {
+        var r = el('div', 'gs-session',
+          '<span class="gs-sid">' + id + '</span><span class="gs-sname">' + name + '</span>' +
+          '<span class="gs-mode">' + mode + '</span><span class="gs-bar"><span class="gs-fill"></span></span>' +
+          '<span class="gs-time">queued</span>');
+        w.querySelector('.gs-sessions').appendChild(r);
+        return show(r);
+      }
+      async function progress(r, frac, ms) {
+        var f = r.querySelector('.gs-fill');
+        f.style.transitionDuration = (reduce ? 0 : ms) + 'ms';
+        requestAnimationFrame(function () { f.style.transform = 'scaleX(' + frac + ')'; });
+        await sleep(ms);
+      }
+      async function runSession(r, ms, elapsed) {
+        r.classList.add('running');
+        r.querySelector('.gs-time').textContent = 'running';
+        await progress(r, 1, ms);
+        r.classList.remove('running');
+        r.classList.add('done');
+        r.querySelector('.gs-time').textContent = elapsed;
+      }
+      function chip(w, cls, text) {
+        var c = el('span', 'gs-chip ' + cls, text);
+        w.querySelector('.gs-wave-foot').appendChild(c);
+        show(c);
+        return c;
+      }
+      async function gate(w, steps) {
+        await sleep(250);
+        for (var i = 0; i < steps.length; i++) {
+          var c = chip(w, '', steps[i]);
+          await sleep(450);
+          c.classList.add('ok');
+        }
+        var g = chip(w, 'gs-chip-gate', '&#9670; gate_check');
+        await sleep(600);
+        g.classList.add('ok');
+        g.innerHTML = '&#9670; gate passed';
+        w.classList.add('passed');
+        w.querySelector('.gs-wave-badge').textContent = 'gate passed';
+        scroll();
+        await sleep(400);
+      }
+
+      async function run() {
+        body.innerHTML = '';
+        root.classList.remove('complete');
+        status.textContent = 'Idle';
+        await sleep(600);
+
+        await type('Run genie-build-waves on customer-360 using docs/plans/waves.json', 26);
+        await sleep(350);
+        var prompt = input.textContent;
+        input.textContent = '';
+        add(el('div', 'gs-msg gs-user', prompt));
+        status.textContent = 'Thinking';
+
+        await sleep(400);
+        var thinking = add(el('div', 'gs-thinking', '<span class="gs-shimmer">Thinking&hellip;</span>'));
+        await sleep(1200);
+        thinking.remove();
+        add(el('div', 'gs-msg gs-agent',
+          'I&rsquo;ll validate the manifest, generate the wave task graph, and start the build. ' +
+          'Sessions in a wave run in parallel; each wave must pass its gate before the next one starts.'));
+        status.textContent = 'Running';
+        await sleep(600);
+
+        var t = tool('&#9636;', 'Read file', 'docs/plans/waves.json');
+        await sleep(700); toolDone(t, '3 waves &middot; 5 sessions');
+        await sleep(250);
+        t = tool('&#9881;', 'Run job', 'setup_build_waves_job');
+        await sleep(1100); toolDone(t, '17 tasks generated');
+        await sleep(350);
+
+        // Wave 0 — single foundation session
+        var w = wave('Wave 0', 'foundation');
+        var s = session(w, '01', 'UC schemas, volumes &amp; grants', 'configure');
+        await sleep(300);
+        await runSession(s, 1500, '1m12s');
+        await gate(w, ['&#8674; integrate']);
+
+        // Wave 1 — three sessions in parallel
+        w = wave('Wave 1', 'parallel build');
+        var a = session(w, '02', 'Express API routes', 'edit');
+        var b = session(w, '03', 'React dashboard UI', 'edit');
+        var c = session(w, '04', 'Feature pipeline notebook', 'execute');
+        await sleep(350);
+        await Promise.all([runSession(a, 2100, '3m41s'), runSession(b, 2800, '4m05s'), runSession(c, 1700, '2m58s')]);
+        await gate(w, ['&#8674; integrate', '&#9095; commit a41f9c2']);
+
+        // Wave 2 — convergence: deploy, observe, fix until stable
+        w = wave('Wave 2', 'converge');
+        var v = session(w, '05', 'Deploy app &middot; observe &middot; fix', 'converge');
+        await sleep(300);
+        v.classList.add('running');
+        var attempts = [[1, 0.34], [2, 0.67], [3, 1]];
+        for (var i = 0; i < attempts.length; i++) {
+          v.querySelector('.gs-time').textContent = 'attempt ' + attempts[i][0] + '/5';
+          await progress(v, attempts[i][1], 950);
+          await sleep(150);
+        }
+        v.classList.remove('running');
+        v.classList.add('done');
+        v.querySelector('.gs-time').textContent = '6m20s';
+        await gate(w, ['app RUNNING', 'soak 10m stable', 'OTel errors 0']);
+
+        status.textContent = 'Complete';
+        root.classList.add('complete');
+        add(el('div', 'gs-summary',
+          '<div class="gs-summary-check">&#10003;</div><div><strong>Build complete</strong>' +
+          '<span class="gs-summary-meta">3 waves &middot; 5 sessions &middot; 0 failures &middot; 0 compute wasted &middot; 18m16s</span></div>'));
+      }
+
+      async function loop() {
+        if (reduce) { await run(); return; }
+        while (true) {
+          await run();
+          await sleep(5000);
+          body.classList.add('fade');
+          await sleep(350);
+          body.innerHTML = '';
+          body.classList.remove('fade');
+        }
+      }
+
+      var started = false;
+      function start() { if (!started) { started = true; loop(); } }
+      if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (entries) {
+          if (entries[0].isIntersecting) { start(); io.disconnect(); }
+        }, { threshold: 0.3 });
+        io.observe(root);
+      } else {
+        start();
+      }
+    })();
+  </script>
 
 </body>
 </html>
