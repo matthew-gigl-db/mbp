@@ -28,13 +28,19 @@
         "error_patterns": ["error TS\\d+", "ELIFECYCLE", "Error building app", "Unhandled", "FATAL"],
         "ignore_patterns": ["Updated file:", "Skipping query type generation"],
         "required_markers": ["listening on"],
-        "traces_table": "my_catalog.my_schema.my_app_otel_spans"
+        "traces_table": "my_catalog.my_schema.my_app_otel_spans",
+        "mlflow_experiment_id": "1234567890123456"
+      },
+      "probe_auth": {
+        "secret_scope": "my_app_credentials",
+        "client_id_key": "probe_sp_client_id",
+        "client_secret_key": "probe_sp_client_secret"
       },
       "probes": [
         {"path": "/api/health", "expect_status": 200, "response_regex": "\"status\":\\s*\"ok\""},
         {"path": "/mcp", "mcp_initialize": true}
       ],
-      "stability": {"soak_minutes": 10, "max_errors": 0, "min_traces": 1}
+      "stability": {"soak_minutes": 10, "max_errors": 0, "min_traces": 1, "max_trace_errors": 0}
     },
     "post_deploy_job": {
       "type": "job",

@@ -7,7 +7,7 @@ Design record for extending `runtime_targets` beyond `app | job | pipeline`. Ori
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | `dashboard` type; wave `validate_bundles` | **Implemented** (2026-10-22) |
-| 2 | `app` probes (HTTP, MCP initialize) + `traces_table` / `min_traces` | **Implemented** (2026-10-22); job-identity auth proof pending a smoke run |
+| 2 | `app` probes (HTTP, MCP initialize) as a `probe_auth` service principal + OTel / MLflow 3 traces (`min_traces`, `max_trace_errors`) | **Implemented** (2026-10-22); live SP auth proof to be run by a consumer project |
 | 3 | `genie_space` type, static checks | Planned |
 | 4 | `genie_space` probe questions | Planned |
 
@@ -38,6 +38,10 @@ Findings that changed the plan:
 * Spans carry no deployment id (resource attributes: `app.id`, `app.name`, `service.name`, `workspace.id`, process/host only). Traces are scoped by `service_name` + time since the probes.
 * An idle app still emits `SPAN_KIND_CLIENT` spans every 5 minutes (its own telemetry export): 26 in 2 hours on `lakeloom-ai-dev` with no traffic and zero SERVER spans. Counting every kind would pass an app that served nothing, so `trace_span_kinds` defaults to `["SPAN_KIND_SERVER"]`.
 * Ad hoc HTTP to app URLs from an interactive assistant session is blocked by policy, and interactive success would not prove the job identity anyway. The smoke task is the proof.
+
+**Revision (owner decision, same day).** Probes authenticate as an explicit service principal, not the job's run-as identity: `probe_auth: {secret_scope, client_id_key, client_secret_key}` (target or top-level) holds its OAuth M2M credentials, and the probe client is `WorkspaceClient(client_id, client_secret, auth_type="oauth-m2m")`. Setup checks that the scope and keys exist (names only). Bad credentials fail at `config.authenticate()` with `invalid_client`, which the probe reports before any request. A consumer project with a provisioned SP runs the live proof.
+
+Trace sources: both Unity Catalog OTel spans (`traces_table`) and MLflow 3 traces (`mlflow_experiment_id`, counted with `mlflow.search_traces(locations=[id], filter_string="trace.timestamp_ms >= <ms>", include_spans=False)`, which needs no span download: under 1 s for 100 traces, versus roughly 0.5 s per trace when spans are downloaded). `max_trace_errors` adds an error budget: OTel traces with a `STATUS_CODE_ERROR` span, MLflow traces in state `ERROR`. Verified on real data: OTel SERVER 0 / all kinds 26 / 1 error span in 30 days; MLflow 100 of 200 traces after the midpoint timestamp, matching a client-side count.
 
 Original plan:
 

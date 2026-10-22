@@ -3,8 +3,10 @@
 Shared by wave_gate_check (runtime gate) and app_probe_check (smoke job).
 
 Requests go only to the app's own URL as returned by `w.apps.get(name).url`; a probe
-supplies a path, never a host. Auth uses `w.config.authenticate()` headers for the
-caller's identity (in a job: the run-as identity), which needs CAN_USE on the app.
+supplies a path, never a host. Auth: a service principal (OAuth M2M) whose client id and
+secret are read from a Databricks secret scope (`probe_auth`), so the probe identity is
+explicit and independent of who runs the job. Without `probe_auth` the caller's own
+identity is used (in a job: the run-as identity). Either way it needs CAN_USE on the app.
 Redirects are not followed: the Apps auth proxy answers an unaccepted credential with
 a redirect to sign-in, which is reported as an auth failure rather than followed.
 """
@@ -19,6 +21,34 @@ import requests
 DEFAULT_PROBE = {"path": "/", "method": "GET", "expect_status": [200, 204]}
 MCP_PROTOCOL_VERSION = "2025-03-26"
 _PATH_RE = re.compile(r"^/[A-Za-z0-9._~!$&'()*+,;=:@%/?\-]*$")
+
+
+PROBE_AUTH_KEYS = ("secret_scope", "client_id_key", "client_secret_key")
+
+
+def validate_probe_auth(a) -> list[str]:
+    """Static checks for a probe_auth block: {secret_scope, client_id_key, client_secret_key}."""
+    if not isinstance(a, dict):
+        return [f"probe_auth must be an object (got {a!r})"]
+    return [f"probe_auth.{k} is required" for k in PROBE_AUTH_KEYS if not a.get(k)]
+
+
+def probe_client(w, auth: dict | None, get_secret):
+    """WorkspaceClient for probe requests. `get_secret(scope, key)` is dbutils.secrets.get.
+
+    Returns (client, identity_label). The label names the secret, never its value.
+    """
+    if not auth:
+        return w, f"caller ({w.current_user.me().user_name})"
+    from databricks.sdk import WorkspaceClient
+    scope = auth["secret_scope"]
+    pc = WorkspaceClient(
+        host=w.config.host,
+        client_id=get_secret(scope, auth["client_id_key"]),
+        client_secret=get_secret(scope, auth["client_secret_key"]),
+        auth_type="oauth-m2m",
+    )
+    return pc, f"service principal from secret {scope}/{auth['client_id_key']}"
 
 
 def validate_probe(p) -> list[str]:
@@ -125,12 +155,34 @@ def run_probe(base_url: str, headers: dict, probe: dict, timeout_s: int = 30, se
     return out
 
 
-def run_app_probes(w, app_name: str, probes: list | None = None, timeout_s: int = 30, retries: int = 1, session=None):
-    """Probe one app. Returns (results, problems). Each failing probe is retried `retries` times (cold start)."""
+def count_mlflow_traces(experiment_id: str, since_ms: int, extra_filter: str | None = None, cap: int = 1000) -> dict:
+    """MLflow 3 traces in an experiment since `since_ms` (metadata only, no span download).
+
+    Returns {traces, errors, capped}. `errors` = traces whose state is ERROR.
+    """
+    import mlflow
+
+    mlflow.set_tracking_uri("databricks")
+    flt = f"trace.timestamp_ms >= {int(since_ms)}" + (f" AND {extra_filter}" if extra_filter else "")
+    found = mlflow.search_traces(locations=[str(experiment_id)], filter_string=flt, max_results=cap,
+                                 return_type="list", include_spans=False)
+    errors = sum(1 for t in found if "ERROR" in str(getattr(t.info, "state", "")))
+    return {"traces": len(found), "errors": errors, "capped": len(found) >= cap, "filter": flt}
+
+
+def run_app_probes(w, app_name: str, probes: list | None = None, timeout_s: int = 30, retries: int = 1,
+                   session=None, probe_w=None):
+    """Probe one app. Returns (results, problems). Each failing probe is retried `retries` times (cold start).
+
+    `w` looks the app up; `probe_w` (default `w`) supplies the request credentials.
+    """
     app = w.apps.get(app_name)
     if not app.url:
         return [], [f"app {app_name} has no URL (not deployed?)"]
-    headers = w.config.authenticate()
+    try:
+        headers = (probe_w or w).config.authenticate()
+    except Exception as e:  # bad SPN credentials fail here, before any request
+        return [], [f"could not obtain probe credentials: {type(e).__name__}: {str(e)[:200]}"]
     results, problems = [], []
     for p in probes or [DEFAULT_PROBE]:
         res = run_probe(app.url, headers, p, timeout_s, session)

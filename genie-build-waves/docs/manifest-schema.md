@@ -43,6 +43,7 @@ The manifest supports three workflow modes that control how sessions operate and
 | `skills` | object | No | Overrides for skill locations. See Skills section. |
 | `task_retries` | object | No | Automatic retries for Genie Code tasks (sessions and integrators), for transient agent start-up errors such as `INTERNAL_ERROR: start_agent_run`. Keys: `max_retries` (default `2`; `0` disables), `min_retry_interval_seconds` (default `60`). Timeouts are never retried. Gate notebooks are not retried. |
 | `runtime_targets` | map<string, RuntimeTarget> | No | Deployable things (apps, jobs, pipelines, dashboards) that `converge` sessions deploy and `runtime_gate` checks. Keyed by a short target name. See RuntimeTarget. |
+| `probe_auth` | ProbeAuth | No | Default service principal for app `probes` (a target's own `probe_auth` overrides it). See Probe Object. |
 | `waves` | Wave[] | Yes | Ordered list of waves. Executed sequentially; sessions within a wave run in parallel. |
 
 ## Wave Object
@@ -109,7 +110,8 @@ Describes how to deploy, run, and observe one deployable resource. Used by `conv
 | `warehouse_id` | string | No | `dashboard` only. Warehouse for the dataset checks. Defaults to the published dashboard's warehouse. |
 | `execute_datasets` | boolean | No | `dashboard` only. `false` (default): validate each dataset query with `EXPLAIN` (no data scanned). `true`: run `SELECT * FROM (<query>) LIMIT 1`, which also catches runtime errors. |
 | `dataset_timeout_seconds` | integer | No | `dashboard` only. Per-dataset statement timeout. Default `120`. |
-| `probes` | Probe[] | No | `app` only. Authenticated HTTP requests the gate sends at the start of the soak, as the build job's run-as identity. Use for custom agents and MCP servers, where `RUNNING` alone does not prove the agent answers. |
+| `probes` | Probe[] | No | `app` only. Authenticated HTTP requests the gate sends at the start of the soak, as the `probe_auth` service principal. Use for custom agents and MCP servers, where `RUNNING` alone does not prove the agent answers. |
+| `probe_auth` | ProbeAuth | No | `app` only. Service principal for this target's probes. Overrides the top-level `probe_auth`. |
 
 Dashboards deploy with `bundle deploy` alone (deploy publishes them), so `deploy_commands` defaults to `bundle deploy --target <t>` and `resource_key` is not needed.
 
@@ -123,7 +125,9 @@ Dashboards deploy with `bundle deploy` alone (deploy publishes them), so `deploy
 | `error_patterns` | string[] | Regexes (matched against `body`) that count as errors in addition to `severity_text IN ('ERROR','FATAL')`. Default: `error TS\\d+`, `ELIFECYCLE`, `Error building app`, `Unhandled`, `UnhandledPromiseRejection`, `FATAL`. |
 | `ignore_patterns` | string[] | Regexes for known-benign lines to exclude from the error count (e.g. `Updated file:`). |
 | `required_markers` | string[] | Regexes that must each match at least one runtime log line for the active deployment (e.g. `listening on`, `pollers started`). |
-| `traces_table` | string | UC table with OpenTelemetry spans (columns `time`, `date`, `service_name`, `kind`, `trace_id`). Required for `stability.min_traces`. |
+| `traces_table` | string | UC table with OpenTelemetry spans (columns `time`, `date`, `service_name`, `kind`, `trace_id`, `status.code`), e.g. the app's `*_otel_spans` table. A trace source for `min_traces` / `max_trace_errors`. |
+| `mlflow_experiment_id` | string | MLflow 3 experiment the app (or agent) logs traces to. The other trace source: counted with `mlflow.search_traces` on trace metadata only (`trace.timestamp_ms >=` probe time, no span download). Error traces = state `ERROR`. |
+| `mlflow_trace_filter` | string | Extra MLflow trace filter ANDed onto the time filter (e.g. `tags.app = 'my-agent'`), for experiments shared by several apps. |
 | `trace_service_name` | string | `service_name` of the app's spans. Default: the app name. |
 | `trace_span_kinds` | string[] | Span kinds that count toward `min_traces`. Default `["SPAN_KIND_SERVER"]` (inbound requests). Apps also emit periodic `SPAN_KIND_CLIENT` spans for their own telemetry export, so counting every kind passes an app that served nothing. `[]` counts all kinds. |
 
@@ -133,7 +137,8 @@ Dashboards deploy with `bundle deploy` alone (deploy publishes them), so `deploy
 |---|---|---|
 | `soak_minutes` | integer | How long the gate watches the target after it is up. During the soak the app must stay `RUNNING` with the same active deployment. Default `10`. |
 | `max_errors` | integer | Error-line budget for the active deployment. Default `0`. |
-| `min_traces` | integer | `app` only. Minimum distinct traces in `telemetry.traces_table` since the probes ran (or since the deployment, without probes). Spans carry no deployment id, so they are scoped by `trace_service_name` and time. Pair with `probes`: an idle app emits no request spans. |
+| `min_traces` | integer | `app` only. Minimum traces since the probes ran (or since the deployment, without probes), in each configured trace source (`telemetry.traces_table` and/or `telemetry.mlflow_experiment_id`). OTel spans carry no deployment id, so they are scoped by `trace_service_name` and time. Pair with `probes`: an idle app emits no request spans. |
+| `max_trace_errors` | integer | `app` only. Error-trace budget over the same window and sources: OTel traces with any span `status.code = STATUS_CODE_ERROR` (any kind), MLflow traces in state `ERROR`. Unset = errors are reported in `wave_<N>_runtime.json` but don't fail the gate. |
 | `traces_wait_minutes` | integer | How long after the soak the gate keeps polling for `min_traces` (span ingestion lag). Default `5`. |
 
 ### Probe Object
@@ -148,13 +153,21 @@ Dashboards deploy with `bundle deploy` alone (deploy publishes them), so `deploy
 | `mcp_initialize` | boolean | Send an MCP JSON-RPC `initialize` (POST, `Accept: application/json, text/event-stream`). Passes when the reply (JSON or SSE) has `result.serverInfo`. |
 | `timeout_seconds` | integer | Per-request timeout. Default `30`. |
 
-Probes use `WorkspaceClient().config.authenticate()` headers, so the build job's run-as identity needs `CAN_USE` on the app. Redirects are not followed: a redirect to sign-in is reported as "credentials not accepted", a 401/403 as missing access. A failing probe is retried once after 10 seconds (cold start). The smoke job's `app_probe_check` task runs the same probes as the job identity, so run `setup_build_waves` with `run_smoke=true` once the app is up, before relying on probes in a build.
+### ProbeAuth Object
+
+| Field | Type | Description |
+|---|---|---|
+| `secret_scope` | string | Databricks secret scope holding the service principal's OAuth credentials. |
+| `client_id_key` | string | Key of the SP's application (client) id. |
+| `client_secret_key` | string | Key of the SP's OAuth secret. |
+
+Probes authenticate as that service principal (OAuth M2M: a `WorkspaceClient(client_id, client_secret)` and its `config.authenticate()` headers). The SP needs `CAN_USE` on the app; the build job's run-as identity needs `READ` on the scope. Setup fails if the scope or either key is missing (it lists key names only, never values). Without any `probe_auth`, probes run as the job's run-as identity (setup warns). Redirects are not followed: a redirect to sign-in is reported as "credentials not accepted", a 401/403 as missing access. A failing probe is retried once after 10 seconds (cold start). The smoke job's `app_probe_check` task runs the same probes with the same `probe_auth` from a job and checks that every configured trace source is readable, so run `setup_build_waves` with `run_smoke=true` once the app is up, before relying on probes in a build.
 
 ### What the runtime gate checks
 
 | Type | Checks |
 |---|---|
-| `app` | Active deployment `SUCCEEDED` and (if fresh required) created after the build run started; no pending deployment; `app_status` `RUNNING` and `compute_status` `ACTIVE`; unchanged through the soak; error lines for the active deployment ≤ `max_errors`; every `required_markers` regex matched. With `probes`: every probe passes at the start of the soak. With `min_traces`: enough traces since the probes ran. |
+| `app` | Active deployment `SUCCEEDED` and (if fresh required) created after the build run started; no pending deployment; `app_status` `RUNNING` and `compute_status` `ACTIVE`; unchanged through the soak; error lines for the active deployment ≤ `max_errors`; every `required_markers` regex matched. With `probes`: every probe passes at the start of the soak. With `min_traces` / `max_trace_errors`: enough traces, and no more error traces than allowed, since the probes ran, in the OTel spans table and/or MLflow 3 experiment. |
 | `job` | Latest run started after the build run started is `TERMINATED` / `SUCCESS`. |
 | `pipeline` | Latest update started after the build run started is `COMPLETED` (or `RUNNING` for continuous pipelines through the soak). |
 | `dashboard` | Published, with the published revision created after the build run started; a warehouse is set; every dataset resolves. Query datasets: `EXPLAIN` (default; a plan containing `Error occurred during query planning` fails even though the statement succeeds) or `LIMIT 1` execution with `execute_datasets`, using the dataset's `catalog`/`schema` and default parameter values. Datasets with multi-value or range parameters are reported as `skipped`. Table / metric view datasets (`asset_name`) must resolve in Unity Catalog. No soak. |

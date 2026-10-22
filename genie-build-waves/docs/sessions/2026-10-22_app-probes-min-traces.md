@@ -28,6 +28,17 @@ Custom agents and MCP servers stay `type: app`. They gain authenticated `probes`
 * All edited notebook cells parse. `bundle validate --strict --target dev` passes.
 * **Not yet verified:** a live smoke run of `app_probe_check` as the job identity (needs deploy + setup with `run_smoke=true` and a manifest with a running app).
 
+## Revision: service principal auth and MLflow 3 traces
+
+Owner decision after the first commit (`0ab303f`): probes authenticate as a provisioned service principal whose OAuth client id and secret live in a Databricks secret scope, and trace checks use whichever sources exist, the Unity Catalog OTel tables or MLflow 3 traces. A consumer project with the SP provisioned runs the live proof.
+
+* `app_probes.py`: `validate_probe_auth`, `probe_client` (OAuth M2M `WorkspaceClient`; the identity label names the secret, never the value), `run_app_probes(..., probe_w=)` (credential errors become a probe failure), `count_mlflow_traces` (metadata-only `search_traces` with `locations=`; `experiment_ids=` is deprecated in MLflow 3.12).
+* Gate: probes use `probe_auth` (target, else top-level). `check_app_traces` reads OTel and/or MLflow sources, and each must meet `min_traces`. New `max_trace_errors`: OTel traces with a `STATUS_CODE_ERROR` span, MLflow traces in state `ERROR`. `%pip` now includes `mlflow`.
+* Smoke `app_probe_check`: same `probe_auth`. Also checks that `traces_table`, `logs_table` and `mlflow_experiment_id` are readable from the job (fails if not, even when the app is down).
+* Setup: validates `probe_auth` blocks and checks that the scope and both keys exist (key names only). `min_traces` / `max_trace_errors` accept either trace source. Warns when probes have no `probe_auth`.
+* Runner skill: run probes through the shared module (inline HTTP-with-secrets instructions were rejected by the editor's safety filter), and use OTel error spans and MLflow `ERROR` traces for diagnosis. Planner skill: look for existing OTel tables or experiments first; `probe_auth` plus `CAN_USE` as a manual prereq when missing.
+* Verified: bad SP credentials raise `invalid_client` at `authenticate()`. 6 setup cases (valid secrets, missing key, missing scope, incomplete block, no trace source, probes without auth) behave as intended. Gate trace function on real data: OTel SERVER 0 (fail), all kinds 26 (pass), MLflow 100 (pass, matches a client-side count), 1 OTel error trace in 30 days trips `max_trace_errors: 0`.
+
 ## Decisions
 
 * Probes live in a shared `.py` next to the notebooks, not duplicated between the gate and the smoke job.
