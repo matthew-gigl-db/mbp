@@ -28,7 +28,7 @@ Wave N:  [...] ----------> integrate -> gate -> gate_check -> done
 
 Each wave follows a four-phase pattern:
 
-1. **Sessions** (`for_each` at full wave concurrency) — Genie Code tasks that each complete one plan file. `edit` sessions write files within `owned_paths`; `execute` sessions run notebooks/SQL; `configure` sessions set up resources.
+1. **Sessions** (`for_each` at full wave concurrency) — Genie Code tasks that each complete one plan file. `edit` sessions write files within `owned_paths`; `execute` sessions run notebooks/SQL; `configure` sessions set up resources; `converge` sessions (follow-up builds) deploy, read telemetry, fix and redeploy.
 2. **Integrator** (single Genie Code task, `run_if: ALL_DONE`) — Collects session status files, runs gate checks. In `git`/`hybrid` mode: checks for stray files and commits by explicit path (the *only* committer). In `workspace` mode: status collection and gates only.
 3. **Gate notebook** (`run_if: ALL_DONE`) — Reads the integrator's gate JSON and every session's status file independently. Sets a `gate_passed` task value (`true`/`false`).
 4. **Gate check** (If/else condition task) — Checks `gate_passed == "true"`. If false, all downstream wave tasks are **Excluded** — zero compute on cascade failure.
@@ -40,7 +40,7 @@ Each wave follows a four-phase pattern:
 | **Initial build** | Wide, parallel | `edit` / `execute` / `configure`, disjoint ownership | Static (validate, files, tables) | The pieces exist |
 | **Follow-up (convergence)** | Sequential, one session each | `converge`: deploy, read telemetry, fix, redeploy | Static + deterministic `runtime_gate` | It deploys, runs, stays up, logs are clean |
 
-A follow-up appends waves to the same `waves.json`. Optionally start with a parallel `edit` wave for known, file-disjoint errors; then add one `converge` wave per deployable thing, in dependency order. Each `converge` session gets `runtime_targets` (how to deploy it, where its OTel logs land, what "stable" means) and loops up to `max_attempts`. The gate notebook then checks the target itself: deployment succeeded during this run, `RUNNING`, unchanged through a soak window, no error lines for that deployment, startup markers present. **A passing stable build is part of the pass criteria.**
+A follow-up appends waves to the same `waves.json`. Optionally start with a parallel `edit` wave for known, file-disjoint errors; then add one `converge` wave per deployable thing, in dependency order. Each `converge` session gets `runtime_targets` (how to deploy it, where its OTel logs land, what "stable" means) and loops up to `max_attempts`. The gate notebook then checks the target itself. For an app: deployment succeeded during this run, `RUNNING`, unchanged through a soak window, no error lines for that deployment, startup markers present. For a job or pipeline: its latest run or update since the build started succeeded. **A passing stable build is part of the pass criteria.**
 
 Deploys are single-writer: the setup job rejects any wave where a deploying session (`converge` or `allow_deploy`) shares the wave with another session. See `examples/converge-waves.json`.
 
@@ -50,11 +50,12 @@ Deploys are single-writer: the setup job rejects any wave where a deploying sess
 |---|---|---|
 | Session Runner skill | `src/skills/genie-build-session-runner/SKILL.md` | Prompt for one session: load manifest, read plan, implement within owned paths, validate, write status JSON |
 | Wave Integrator skill | `src/skills/genie-build-wave-integrator/SKILL.md` | Prompt for per-wave integration: collect status, check strays, commit+push, write gate JSON |
+| Build Planner skill | `src/skills/genie-build-planner/SKILL.md` | Planning guide you give Genie Code in your project folder: decompose into waves/sessions, write plans and `waves.json`. Not published to UC |
 | Gate check notebook | `src/notebooks/wave_gate_check.ipynb` | Deterministic stop: reads gate + status files; for `runtime_gate` waves also checks app/job/pipeline state, soak stability and OTel error lines itself |
 | Placeholder notebook | `src/notebooks/genie_task_placeholder.ipynb` | Stand-in for `genie_task` (bundle CLI has no schema); fails loud if run |
-| Setup notebook | `src/notebooks/setup_build_waves_job.ipynb` | Validates the manifest, publishes skills, creates/reuses automations, generates the task graph (with per-task timeouts) from the manifest, resets jobs |
+| Setup notebook | `src/notebooks/setup_build_waves_job.ipynb` | Validates the manifest, publishes the runner and integrator skills to UC, creates/reuses automations, generates the task graph (with per-task timeouts and retries) from the manifest, resets the build and smoke jobs |
 | Build job YAML | `resources/build_waves.job.yml` | Shell job (one placeholder); setup notebook replaces with full wave graph |
-| Setup job YAML | `resources/setup_build_waves.job.yml` | Runs setup notebook after every deploy |
+| Setup job YAML | `resources/setup_build_waves.job.yml` | Runs the setup notebook. Run it after every deploy (deploy restores the placeholders); `run_smoke=true` also runs the smoke job |
 | Smoke job YAML | `resources/build_waves_smoke.job.yml` | 2-item `for_each` nonce echo plus a read-only `capability_probe` (CLI, apps/jobs read, SQL, telemetry) for converge sessions |
 
 ## Getting started with Genie Code
@@ -127,7 +128,7 @@ databricks bundle deploy --target dev \
   --var="skills_schema=my_schema"
 ```
 
-Optional variables (with defaults): `instance_suffix` (`""`), `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`.
+Optional variables (with defaults): `project_name` (`"Project"`, used in job names), `instance_suffix` (`""`), `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`.
 
 **One deployment per project.** `instance_suffix` is appended to the bundle root path (`.bundle/genie-build-waves<suffix>/<target>`), so each project gets its own deployment state and its own build, setup and smoke jobs. Use the same suffix every time you deploy or validate for a project. Without it, deploying for a second project replaces the first project's jobs.
 
@@ -150,7 +151,11 @@ Pass = both iterations SUCCESS, each echoing its `session_id` and the nonce. Bef
 
 ### 5. Start the build
 
-Run the build job from the Jobs UI. Set the `branch` parameter if not using the default. Watch each `wN_gate` task.
+```bash
+databricks bundle run build_waves --target dev
+```
+
+Or choose **Run now** on the build job in the Jobs UI. `branch` defaults to `build_branch`; override it with `--params branch=<branch>`. Each wave runs `wN_sessions` → `wN_integrate` → `wN_gate` → `wN_gate_check`, and the next wave starts only when `wN_gate_check` is true. Watch each `wN_gate` task.
 
 ## When a wave fails
 
@@ -197,9 +202,9 @@ A convergence wave can commit (its session passed) and still fail on `runtime_ga
 
 ## Changing a build
 
-* **Skill or prompt change**: Edit the `SKILL.md`, re-run the setup job.
-* **Wave or session change**: Edit `waves.json`, re-run `bundle deploy` then the setup job. The setup notebook reads the manifest and regenerates the full task graph.
-* Never edit the build jobs in the UI; deploy overwrites them.
+* **Skill or prompt change**: Edit the `SKILL.md` in this repo, re-run `bundle deploy` (setup publishes skills from the deployed copy), then the setup job.
+* **Wave or session change**: Edit `waves.json` in your project, then re-run the setup job. The setup notebook reads the manifest from `manifest_path` and regenerates the full task graph; no deploy is needed unless you change bundle variables.
+* Never edit the build jobs in the UI; deploy and setup overwrite them.
 
 ## Workflow modes
 
@@ -209,7 +214,7 @@ A convergence wave can commit (its session passed) and still fail on `runtime_ga
 | `workspace` | Notebooks, tables, dashboards, UC objects | No Git | Data engineering, ML, migrations, infra |
 | `hybrid` | Mix of file edits and workspace operations | Commits file edits only | Projects combining code + execution |
 
-Sessions also have **modes** (`edit`, `execute`, `configure`) that control what they're allowed to do. See [docs/manifest-schema.md](docs/manifest-schema.md) for details.
+Sessions also have **modes** (`edit`, `execute`, `configure`, `converge`) that control what they're allowed to do. See [docs/manifest-schema.md](docs/manifest-schema.md) for details.
 
 ## Key design decisions
 
@@ -218,7 +223,7 @@ Sessions also have **modes** (`edit`, `execute`, `configure`) that control what 
 * **Sessions are Git read-only** — In `git`/`hybrid` mode, only the integrator commits, by explicit path, to a feature branch.
 * **Placeholder workaround** — `genie_task` isn't in the bundle CLI schema; notebook placeholders get swapped via `jobs/reset`.
 * **Dynamic task graph** — The setup notebook generates the wave task structure from the manifest, so different projects with different wave counts work without YAML changes.
-* **Repair-friendly** — `run_if: ALL_DONE` on integrator/gate means failures get reported. Repair re-runs only failed tasks.
+* **Repair-friendly** — `run_if: ALL_DONE` on integrator/gate means failures get reported. Repair re-runs from the failed wave (with dependents); passing earlier waves are not re-run.
 * **Zero-compute cascade** — If/else gate checks use the Excluded propagation rule: when a gate fails, all downstream wave tasks are Excluded instantly (no wasted Genie Code compute).
 
 ## Guardrails
