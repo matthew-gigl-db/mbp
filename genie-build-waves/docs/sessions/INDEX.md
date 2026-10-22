@@ -1,5 +1,11 @@
 # Session Summaries — genie-build-waves
 
+## 2026-10-22
+
+| Session | Summary |
+|---|---|
+| [pitch-document-polish](2026-10-22_pitch-document-polish.md) | Rebuilt hero animation as Genie Code → Lakeflow Job → Genie Code three-act narrative. Replaced columnar job view with animated Gantt-style run timeline (bars fill left-to-right, parallel iterations, attempt counting, soak window). Fixed dark-mode product logos via `<picture>` + white lockup variants. Scoped `.bp-list > li` so nested bullets no longer get numbered circles. Made deploy steps 4–5 actionable with real CLI commands. Fixed `-p` → `--params` smoke-test flag in pitch and README. |
+
 ## 2026-10-21
 
 | Session | Summary |
@@ -23,3 +29,12 @@
 | 8 | (feat) | Session titles in `for_each` inputs and task descriptions |
 | 9 | (feat) | Nonce-based smoke test for parameter resolution |
 | 10 | (fix) | `{{param}}` placeholders in automation prompts — the real root cause |
+| 11 | `7df5ade` | Lava glow on hover for hero CTA buttons |
+| 12 | `7836ab9` | Lava text-shadow glow on ghost button hover |
+| 13 | `12459a3` | Lava glow on hover for hero product strip logos |
+| 14 | `cf23dcb` | Replace static hero wave diagram with animated Genie Code session |
+| 15 | `eedc294` | Hero animation: Genie Code → Lakeflow Job → Genie Code narrative |
+| 16 | `efc0ae2` | Lakeflow Job run view becomes animated run timeline |
+| 17 | `b20fa0d` | White product lockups in dark mode for Why Genie Code cards |
+| 18 | `9f21771` | Nested bullets in Best Practices no longer get numbered circles |
+| 19 | `8fc83dc` | Deploy steps 4-5 actionable; fix `-p` → `--params` smoke-test flag |
