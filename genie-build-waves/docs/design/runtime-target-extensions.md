@@ -10,7 +10,7 @@ Design record for extending `runtime_targets` beyond `app | job | pipeline`. Ori
 | 2 | `app` probes (HTTP, MCP initialize) as a `probe_auth` service principal + OTel / MLflow 3 traces (`min_traces`, `max_trace_errors`) | **Implemented** (2026-10-22); live SP auth proof to be run by a consumer project |
 | 3 | `genie_space` type, static checks | **Implemented** (2026-10-22) |
 | 4 | `genie_space` probe questions | Planned (second) |
-| 5 | Live proof and smoke coverage: `probe_auth` service principal from a real job run; Genie space `CAN_EDIT` in the smoke job | Planned (first) |
+| 5 | Live proof and smoke coverage: `probe_auth` service principal from a real job run; Genie space `CAN_EDIT` in the smoke job | **Implemented** (2026-10-22); accepted-SP pass path needs a `CAN_USE` grant or fresh secret |
 | 6 | Pipeline data quality: expectation failures, dropped records | Planned (third) |
 | 7 | `table` type: data assertions (exists, rows, columns, freshness) | Planned (fourth) |
 
@@ -61,8 +61,8 @@ Fields on `app` targets:
 "stability": {"min_traces": 1}
 ```
 
-* Probes run from the gate notebook with the build job's identity, using `WorkspaceClient().config.authenticate()` headers (plain Bearer tokens get 403 from the Apps auth sidecar). The identity needs `CAN_USE` on the app.
-* **Prerequisite:** extend `capability_probe` to prove an authenticated app request works under a job run-as identity before relying on it.
+* ~~Probes run from the gate notebook with the build job's identity~~ (superseded: the job's credential is not an OAuth token and is redirected; see Phase 5).
+* ~~Prerequisite: extend `capability_probe` to prove an authenticated app request works under a job run-as identity~~ (done as the `app_probe_check` smoke task; see Phase 5).
 * Run probes at the start of the soak, then require `min_traces` spans for the deployment **since the probe time**. An idle agent emits no traces, so a trace floor without probe traffic would fail healthy apps.
 * MCP: POST a JSON-RPC `initialize` with `Accept: application/json, text/event-stream`; pass = a result with `serverInfo`.
 
@@ -97,7 +97,24 @@ Original plan:
 * One retry per question. `warn` records failures in `wave_<N>_runtime.json` without failing the wave; `fail` fails it.
 * Add each question's timeout to the gate task timeout.
 
-## Phase 5 (planned): live proof and smoke coverage
+## Phase 5 (implemented): live proof and smoke coverage
+
+**As built.** Smoke `app_probe_check` also checks each `genie_space` target (`pass` / `fail` on no `CAN_EDIT` / `skipped` if not created yet) and only probes apps that have `probes` or `probe_auth`. `probe_auth` is now required for probes: `probe_client` raises without it, and setup rejects `probes` without it. Secret read errors are cut to one line.
+
+Live proof, one-time serverless job runs of `app_probe_check` against `lakeloom-ai-dev` (manifests kept in the git-ignored `.scratch/`):
+
+| Case | Result |
+|---|---|
+| Job identity (`CAN_MANAGE` on the app), no `probe_auth` | 302 to sign-in. **The job-identity fallback cannot work**: Apps accept only OAuth tokens, a job's runtime credential is not one. Fallback removed. |
+| SP with valid OAuth secret, no `CAN_USE` | Token issued, then 302 to sign-in (not 403). Message now names both causes. |
+| SP whose stored secret was rotated | `invalid_client` before any request |
+| Missing secret key | One-line `Secret does not exist` error |
+| Genie space by id, by title; space not created yet | pass, pass, skipped |
+| App without probes; OTel traces and logs tables | pass (not probed); both readable |
+
+Open: an accepted request (200) as a service principal. The only scoped SP with `CAN_USE` on a running app has a stale secret; proving it needs a `CAN_USE` grant to a scoped SP or a fresh secret (owner's call).
+
+Original plan:
 
 * Run the smoke job for real with a manifest whose app target has `probes` and `probe_auth`, and record the result (pass, or the exact failure and fix).
 * Smoke `app_probe_check` also checks every `genie_space` target: the space resolves, and `get_space(include_serialized_space=True)` works as the job identity (the gate needs `CAN_EDIT`). `fail` on a missing grant, so the build doesn't discover it at the gate.

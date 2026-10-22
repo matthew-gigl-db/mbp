@@ -37,15 +37,29 @@ def probe_client(w, auth: dict | None, get_secret):
     """WorkspaceClient for probe requests. `get_secret(scope, key)` is dbutils.secrets.get.
 
     Returns (client, identity_label). The label names the secret, never its value.
+
+    `auth` is required. Databricks Apps accept only OAuth tokens; a job's runtime credential (even for
+    an identity with CAN_MANAGE on the app) is redirected to sign-in, verified from a job run (2026-10-22).
     """
     if not auth:
-        return w, f"caller ({w.current_user.me().user_name})"
+        raise ValueError("probe_auth is required: Databricks Apps accept only OAuth tokens, and a job's own "
+                         "credential is redirected to sign-in. Set probe_auth to a service principal with "
+                         "CAN_USE on the app.")
     from databricks.sdk import WorkspaceClient
     scope = auth["secret_scope"]
+
+    def _secret(key):
+        try:
+            return get_secret(scope, key)
+        except Exception as e:  # dbutils raises a long Py4J trace; keep the first line
+            msg = str(e).split("\n")
+            first = next((ln for ln in msg if "Secret does not exist" in ln), msg[0])
+            raise ValueError(f"cannot read secret {scope}/{key}: {first.strip()[:200]}") from None
+
     pc = WorkspaceClient(
         host=w.config.host,
-        client_id=get_secret(scope, auth["client_id_key"]),
-        client_secret=get_secret(scope, auth["client_secret_key"]),
+        client_id=_secret(auth["client_id_key"]),
+        client_secret=_secret(auth["client_secret_key"]),
         auth_type="oauth-m2m",
     )
     return pc, f"service principal from secret {scope}/{auth['client_id_key']}"
@@ -122,7 +136,8 @@ def run_probe(base_url: str, headers: dict, probe: dict, timeout_s: int = 30, se
     if 300 <= r.status_code < 400:
         loc = r.headers.get("Location", "")
         same_host = urlparse(loc).netloc in ("", urlparse(base_url).netloc)
-        why = "redirect" if same_host else "redirected to sign-in: the app did not accept this identity's credentials"
+        why = "redirect" if same_host else ("redirected to sign-in: the app did not accept this identity's credentials "
+                                         "(no CAN_USE on the app, or not an OAuth token)")
         if r.status_code not in expect:
             out.update({"result": "fail", "detail": f"{r.status_code} {why} ({loc[:120]})"})
             return out

@@ -59,7 +59,7 @@ A manifest can span several bundles. List them in a wave's `validate_bundles` (`
 | Setup notebook | `src/notebooks/setup_build_waves_job.ipynb` | Validates the manifest, publishes the runner and integrator skills to UC, creates/reuses automations, generates the task graph (with per-task timeouts and retries) from the manifest, resets the build and smoke jobs |
 | Build job YAML | `resources/build_waves.job.yml` | Shell job (one placeholder); setup notebook replaces with full wave graph |
 | Setup job YAML | `resources/setup_build_waves.job.yml` | Runs the setup notebook. Run it after every deploy (deploy restores the placeholders); `run_smoke=true` also runs the smoke job |
-| Smoke job YAML | `resources/build_waves_smoke.job.yml` | 2-item `for_each` nonce echo, a read-only `capability_probe` (CLI, apps/jobs read, SQL, telemetry) for converge sessions, and `app_probe_check` (`src/notebooks/app_probe_check.ipynb`), which proves from a job that the `probe_auth` service principal can call the apps and that their trace sources are readable |
+| Smoke job YAML | `resources/build_waves_smoke.job.yml` | 2-item `for_each` nonce echo, a read-only `capability_probe` (CLI, apps/jobs read, SQL, telemetry) for converge sessions, and `app_probe_check` (`src/notebooks/app_probe_check.ipynb`), which proves from a job that the `probe_auth` service principal can call the apps, that their trace sources are readable, and that the job can read each Genie space's configuration (`CAN_EDIT`) |
 
 ## Getting started with Genie Code
 
@@ -150,7 +150,7 @@ Run setup with `run_smoke=true` to verify Genie Code tasks work inside `for_each
 databricks bundle run setup_build_waves --target dev --params run_smoke=true
 ```
 
-Pass = both iterations SUCCESS, each echoing its `session_id` and the nonce. Before a follow-up build, also read the `capability_probe` output: every check should be `ok` (and `deploy_permitted=yes`), otherwise `converge` sessions cannot work unattended. If the manifest's apps use `probes` or `min_traces`, `app_probe_check` must be `pass`; `skipped` means no app was running, so re-run the smoke once it is.
+Pass = both iterations SUCCESS, each echoing its `session_id` and the nonce. Before a follow-up build, also read the `capability_probe` output: every check should be `ok` (and `deploy_permitted=yes`), otherwise `converge` sessions cannot work unattended. If the manifest's apps use `probes` or `min_traces`, or it has Genie spaces, `app_probe_check` must be `pass`; `skipped` means no app was running or no space exists yet, so re-run the smoke once they do. Probes always need `probe_auth`: Apps accept only OAuth tokens, so the job's own credential is redirected to sign-in.
 
 ### 5. Start the build
 
