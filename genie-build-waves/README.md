@@ -128,7 +128,7 @@ databricks bundle deploy --target dev \
   --var="skills_schema=my_schema"
 ```
 
-Optional variables (with defaults): `project_name` (`"Project"`, used in job names), `instance_suffix` (`""`), `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`.
+Optional variables (with defaults): `project_name` (`"Genie Build Waves"`, used in job names), `instance_suffix` (`""`), `create_skills_schema` (`"true"`), `runner_skill_id`, `integrator_skill_id`.
 
 **One deployment per project.** `instance_suffix` is appended to the bundle root path (`.bundle/genie-build-waves<suffix>/<target>`), so each project gets its own deployment state and its own build, setup and smoke jobs. Use the same suffix every time you deploy or validate for a project. Without it, deploying for a second project replaces the first project's jobs.
 
@@ -202,7 +202,7 @@ A convergence wave can commit (its session passed) and still fail on `runtime_ga
 
 ## Changing a build
 
-* **Skill or prompt change**: Edit the `SKILL.md` in this repo, re-run `bundle deploy` (setup publishes skills from the deployed copy), then the setup job.
+* **Skill or prompt change**: Edit the `SKILL.md` in this repo, then re-run the setup job (it republishes the skills). On `dev`, deployments are source-linked, so setup reads `src/skills` straight from this repo. On other targets, setup reads the deployed copy, so run `bundle deploy` first.
 * **Wave or session change**: Edit `waves.json` in your project, then re-run the setup job. The setup notebook reads the manifest from `manifest_path` and regenerates the full task graph; no deploy is needed unless you change bundle variables.
 * Never edit the build jobs in the UI; deploy and setup overwrite them.
 

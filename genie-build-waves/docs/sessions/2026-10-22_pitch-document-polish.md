@@ -60,7 +60,7 @@ Replaced the per-wave columnar task cards with a Gantt-style timeline:
 
 Checked every README claim against `databricks.yml`, the job YAMLs, the setup and gate notebooks, the skills and `manifest-schema.md`.
 
-- **Skill changes need a deploy.** Setup publishes skills from the deployed copy (`${workspace.file_path}/src/skills`), so editing `SKILL.md` requires `bundle deploy` before setup. Manifest changes need only the setup job (it reads `manifest_path` directly). Fixed in README "Changing a build" and the pitch's Skills card.
+- **Skill changes and deploys.** Setup publishes skills from `${workspace.file_path}/src/skills`. On `dev` (source-linked deployment) that resolves to the repo itself, so a `SKILL.md` edit needs only the setup job; on other targets it is the deployed copy, so `bundle deploy` first. Manifest changes need only the setup job (it reads `manifest_path` directly). Fixed in README "Changing a build" and the pitch's Skills card. (First pass wrongly said a deploy was always needed; corrected after `bundle validate -o json` showed the source-linked `skills_dir` on dev.)
 - `converge` added to the session-mode lists.
 - The setup job is run after every deploy; deploy does not trigger it.
 - Architecture table: Build Planner skill row added; setup notebook row covers retries, timeouts and smoke job reset.
@@ -83,6 +83,7 @@ Checked every README claim against `databricks.yml`, the job YAMLs, the setup an
 | `8fc83dc` | docs: make deploy steps 4-5 actionable; fix smoke-test flag |
 | `e30eafb` | docs: app scaffolding command is `databricks apps init`, not `apps create` (Best Practice #2) |
 | `9a44b64` | docs: README accuracy pass against bundle source |
+| (next) | chore: default `project_name` "Genie Build Waves"; setup header lists 4 automations; source-linked skill-change wording |
 
 ## Files Modified
 

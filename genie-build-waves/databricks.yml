@@ -17,7 +17,7 @@ variables:
   # Human-readable project name. Used in job display names and commit messages.
   project_name:
     description: "Project name for job titles (e.g. 'My App')"
-    default: "Project"
+    default: "Genie Build Waves"
 
   # One deployment per project: appended to the bundle root path so each project gets its
   # own deployment state and its own build/setup/smoke jobs. Empty keeps the original path
