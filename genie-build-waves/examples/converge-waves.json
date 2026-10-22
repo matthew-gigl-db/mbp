@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Follow-up build for an AppKit app after the initial parallel build (waves 0-4, omitted here). Wave 5 fixes known compile errors in parallel; waves 6-7 converge sequentially until the app and its post-deploy job are stable.",
+  "description": "Follow-up build for an AppKit app after the initial parallel build (waves 0-4, omitted here). Wave 5 fixes known compile errors in parallel; waves 6-7 converge sequentially until the app and its post-deploy job are stable; wave 8 converges the ops dashboard and validates both bundles.",
   "workflow": {"mode": "git"},
   "repo_root": "/Workspace/Users/you@example.com/my-repo",
   "bundle_root": "/Workspace/Users/you@example.com/my-repo/my-app",
@@ -40,6 +40,15 @@
         "bundle run post_deploy_setup --target dev"
       ],
       "stability": {"soak_minutes": 20}
+    },
+    "ops_dashboard": {
+      "type": "dashboard",
+      "name": "[dev your_name] My App Ops",
+      "bundle_root": "/Workspace/Users/you@example.com/my-repo/my-app",
+      "bundle_target": "dev",
+      "deploy_commands": ["bundle deploy --target dev"],
+      "execute_datasets": false,
+      "dataset_timeout_seconds": 120
     }
   },
 
@@ -112,6 +121,30 @@
           "max_attempts": 4,
           "timeout_minutes": 120,
           "depends_on": ["16"]
+        }
+      ]
+    },
+    {
+      "wave_id": "8",
+      "name": "Converge: ops dashboard publishes and every dataset resolves",
+      "gate": ["Session 18 status is pass with a final attempt classified stable"],
+      "validate_bundles": [
+        {"root": "/Workspace/Users/you@example.com/my-repo/my-app", "target": "dev"},
+        {"root": "/Workspace/Users/you@example.com/my-repo/infra", "target": "dev"}
+      ],
+      "runtime_gate": ["ops_dashboard"],
+      "sessions": [
+        {
+          "session_id": "18",
+          "title": "Deploy ops dashboard, EXPLAIN every dataset, fix until clean",
+          "plan_file": "18_converge_ops_dashboard.md",
+          "mode": "converge",
+          "scope": "Deploy the bundle so the ops dashboard publishes, run EXPLAIN on every dataset query on its warehouse, fix broken queries or table references in the dashboard JSON, and repeat until every dataset resolves.",
+          "runtime_targets": ["ops_dashboard"],
+          "owned_paths": ["src/dashboards/*.lvdash.json", "resources/dashboards/**"],
+          "max_attempts": 4,
+          "timeout_minutes": 90,
+          "depends_on": ["17"]
         }
       ]
     }

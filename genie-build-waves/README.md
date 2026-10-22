@@ -40,9 +40,11 @@ Each wave follows a four-phase pattern:
 | **Initial build** | Wide, parallel | `edit` / `execute` / `configure`, disjoint ownership | Static (validate, files, tables) | The pieces exist |
 | **Follow-up (convergence)** | Sequential, one session each | `converge`: deploy, read telemetry, fix, redeploy | Static + deterministic `runtime_gate` | It deploys, runs, stays up, logs are clean |
 
-A follow-up appends waves to the same `waves.json`. Optionally start with a parallel `edit` wave for known, file-disjoint errors; then add one `converge` wave per deployable thing, in dependency order. Each `converge` session gets `runtime_targets` (how to deploy it, where its OTel logs land, what "stable" means) and loops up to `max_attempts`. The gate notebook then checks the target itself. For an app: deployment succeeded during this run, `RUNNING`, unchanged through a soak window, no error lines for that deployment, startup markers present. For a job or pipeline: its latest run or update since the build started succeeded. **A passing stable build is part of the pass criteria.**
+A follow-up appends waves to the same `waves.json`. Optionally start with a parallel `edit` wave for known, file-disjoint errors; then add one `converge` wave per deployable thing, in dependency order. Each `converge` session gets `runtime_targets` (how to deploy it, where its OTel logs land, what "stable" means) and loops up to `max_attempts`. The gate notebook then checks the target itself. For an app: deployment succeeded during this run, `RUNNING`, unchanged through a soak window, no error lines for that deployment, startup markers present. For a job or pipeline: its latest run or update since the build started succeeded. For an AI/BI dashboard: published during this run, and every dataset query passes `EXPLAIN` (or runs with `LIMIT 1` when `execute_datasets` is set). **A passing stable build is part of the pass criteria.**
 
 Deploys are single-writer: the setup job rejects any wave where a deploying session (`converge` or `allow_deploy`) shares the wave with another session. See `examples/converge-waves.json`.
+
+A manifest can span several bundles. List them in a wave's `validate_bundles` (`root` + `target` each) and the integrator runs `bundle validate --strict` on every one; the gate notebook fails the wave if any is missing or failing. Runtime targets carry their own `bundle_root` and `bundle_target`. See [docs/manifest-schema.md](docs/manifest-schema.md#multiple-bundles-in-one-manifest).
 
 ## Architecture
 
@@ -51,7 +53,7 @@ Deploys are single-writer: the setup job rejects any wave where a deploying sess
 | Session Runner skill | `src/skills/genie-build-session-runner/SKILL.md` | Prompt for one session: load manifest, read plan, implement within owned paths, validate, write status JSON |
 | Wave Integrator skill | `src/skills/genie-build-wave-integrator/SKILL.md` | Prompt for per-wave integration: collect status, check strays, commit+push, write gate JSON |
 | Build Planner skill | `src/skills/genie-build-planner/SKILL.md` | Planning guide you give Genie Code in your project folder: decompose into waves/sessions, write plans and `waves.json`. Not published to UC |
-| Gate check notebook | `src/notebooks/wave_gate_check.ipynb` | Deterministic stop: reads gate + status files; for `runtime_gate` waves also checks app/job/pipeline state, soak stability and OTel error lines itself |
+| Gate check notebook | `src/notebooks/wave_gate_check.ipynb` | Deterministic stop: reads gate + status files; for `runtime_gate` waves also checks app/job/pipeline/dashboard state, soak stability, OTel error lines and dashboard datasets itself; checks `validate_bundles` results |
 | Placeholder notebook | `src/notebooks/genie_task_placeholder.ipynb` | Stand-in for `genie_task` (bundle CLI has no schema); fails loud if run |
 | Setup notebook | `src/notebooks/setup_build_waves_job.ipynb` | Validates the manifest, publishes the runner and integrator skills to UC, creates/reuses automations, generates the task graph (with per-task timeouts and retries) from the manifest, resets the build and smoke jobs |
 | Build job YAML | `resources/build_waves.job.yml` | Shell job (one placeholder); setup notebook replaces with full wave graph |

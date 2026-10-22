@@ -4,6 +4,7 @@
 
 | Session | Summary |
 |---|---|
+| [dashboard-target-validate-bundles](2026-10-22_dashboard-target-validate-bundles.md) | Phase 1 of runtime target extensions: `dashboard` runtime target (published in this run, every dataset passes `EXPLAIN` or `LIMIT 1` with `execute_datasets`; `EXPLAIN` errors come back as SUCCEEDED rows, so the plan text is inspected) and wave `validate_bundles` (integrator validates each bundle, gate notebook checks coverage). Phases 2–4 (app probes, `genie_space`, probe questions in `warn` mode) recorded in `docs/design/runtime-target-extensions.md`. |
 | [pitch-document-polish](2026-10-22_pitch-document-polish.md) | Rebuilt hero animation as Genie Code → Lakeflow Job → Genie Code three-act narrative. Replaced columnar job view with animated Gantt-style run timeline (bars fill left-to-right, parallel iterations, attempt counting, soak window). Fixed dark-mode product logos via `<picture>` + white lockup variants. Scoped `.bp-list > li` so nested bullets no longer get numbered circles. Made deploy steps 4–5 actionable with real CLI commands. Fixed `-p` → `--params` smoke-test flag in pitch and README. |
 
 ## 2026-10-21

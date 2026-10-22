@@ -42,7 +42,7 @@ The manifest supports three workflow modes that control how sessions operate and
 | `context_files` | string[] | No | Extra files (relative to `build_root`) for sessions to read before working. Project memory, coding standards, architecture docs, data dictionaries, model cards. |
 | `skills` | object | No | Overrides for skill locations. See Skills section. |
 | `task_retries` | object | No | Automatic retries for Genie Code tasks (sessions and integrators), for transient agent start-up errors such as `INTERNAL_ERROR: start_agent_run`. Keys: `max_retries` (default `2`; `0` disables), `min_retry_interval_seconds` (default `60`). Timeouts are never retried. Gate notebooks are not retried. |
-| `runtime_targets` | map<string, RuntimeTarget> | No | Deployable things (apps, jobs, pipelines) that `converge` sessions deploy and `runtime_gate` checks. Keyed by a short target name. See RuntimeTarget. |
+| `runtime_targets` | map<string, RuntimeTarget> | No | Deployable things (apps, jobs, pipelines, dashboards) that `converge` sessions deploy and `runtime_gate` checks. Keyed by a short target name. See RuntimeTarget. |
 | `waves` | Wave[] | Yes | Ordered list of waves. Executed sequentially; sessions within a wave run in parallel. |
 
 ## Wave Object
@@ -55,6 +55,7 @@ The manifest supports three workflow modes that control how sessions operate and
 | `manual_prereqs` | ManualPrereq[] | No | Sessions that must be done outside Genie Code before this wave runs. |
 | `gate` | string[] | Yes | List of checks the integrator runs after all sessions finish. Plain text descriptions; the integrator interprets them. |
 | `runtime_gate` | string[] | No | Names of `runtime_targets` the **gate notebook** checks deterministically after the integrator commits (deployment succeeded in this run, running, soak-stable, clean logs). Required on any wave with a `converge` session. A failing runtime gate fails the wave regardless of what the Genie Code tasks reported. |
+| `validate_bundles` | BundleValidation[] | No | Bundles the **integrator** must run `bundle validate --strict` on for this wave, each from its own root and target: `[{"root": "infra", "target": "dev"}, {"root": "app", "target": "dev"}]`. `root` is absolute or relative to `build_root`. Results go in the gate file's `bundle_validations`; the gate notebook fails the wave if any entry is missing or not `pass`. Use this instead of free-text validate lines in `gate` when a wave touches more than one bundle. See Multiple bundles in one manifest. |
 | `timeout_minutes` | integer | No | Default task timeout for this wave's sessions. Defaults: 60 (`edit`/`execute`/`configure`), 180 (`converge`). |
 | `sessions` | Session[] | Yes | Sessions in this wave. |
 
@@ -95,16 +96,21 @@ Describes how to deploy, run, and observe one deployable resource. Used by `conv
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `type` | string | Yes | `app`, `job`, or `pipeline`. |
-| `name` | string | Yes | Deployed resource name as it appears in the workspace (app name, or job/pipeline display name including any dev-mode prefix). Used by the gate to look it up. |
-| `id` | string | No | Job id or pipeline id. Preferred over `name` lookup for jobs and pipelines. |
+| `type` | string | Yes | `app`, `job`, `pipeline`, or `dashboard`. |
+| `name` | string | Conditional | Deployed resource name as it appears in the workspace (app name, or job/pipeline/dashboard display name including any dev-mode prefix). Used by the gate to look it up; a lookup that matches zero or several resources fails. Required for apps; otherwise `name` or `id`. |
+| `id` | string | No | Job id, pipeline id, or dashboard id. Preferred over `name` lookup. |
 | `bundle_root` | string | No | Absolute workspace path of the bundle that defines the resource. Defaults to `build_root`. |
 | `bundle_target` | string | No | Target to deploy. Defaults to top-level `bundle_target`. |
 | `resource_key` | string | No | Bundle resource key (e.g. `trading_agent_app`), used for `bundle run <resource_key>`. |
 | `deploy_commands` | string[] | No | Databricks CLI commands (without the `databricks` prefix) run from `bundle_root`, in order, to deploy and start the target. Default for apps: `bundle deploy --target <t>` then `bundle run <resource_key> --target <t>` (plain deploy does not redeploy app code when config is unchanged). |
 | `telemetry` | Telemetry | No | Where logs land and how to judge them. Strongly recommended for apps. |
 | `stability` | Stability | No | Soak and error budget. |
-| `require_fresh_deployment` | boolean | No | Gate requires the active deployment / run / update to have started after the build job run started. Default `true`. |
+| `require_fresh_deployment` | boolean | No | Gate requires the active deployment / run / update / published dashboard revision to have started after the build job run started. Default `true`. |
+| `warehouse_id` | string | No | `dashboard` only. Warehouse for the dataset checks. Defaults to the published dashboard's warehouse. |
+| `execute_datasets` | boolean | No | `dashboard` only. `false` (default): validate each dataset query with `EXPLAIN` (no data scanned). `true`: run `SELECT * FROM (<query>) LIMIT 1`, which also catches runtime errors. |
+| `dataset_timeout_seconds` | integer | No | `dashboard` only. Per-dataset statement timeout. Default `120`. |
+
+Dashboards deploy with `bundle deploy` alone (deploy publishes them), so `deploy_commands` defaults to `bundle deploy --target <t>` and `resource_key` is not needed.
 
 ### Telemetry Object
 
@@ -131,6 +137,15 @@ Describes how to deploy, run, and observe one deployable resource. Used by `conv
 | `app` | Active deployment `SUCCEEDED` and (if fresh required) created after the build run started; no pending deployment; `app_status` `RUNNING` and `compute_status` `ACTIVE`; unchanged through the soak; error lines for the active deployment ≤ `max_errors`; every `required_markers` regex matched. |
 | `job` | Latest run started after the build run started is `TERMINATED` / `SUCCESS`. |
 | `pipeline` | Latest update started after the build run started is `COMPLETED` (or `RUNNING` for continuous pipelines through the soak). |
+| `dashboard` | Published, with the published revision created after the build run started; a warehouse is set; every dataset resolves. Query datasets: `EXPLAIN` (default; a plan containing `Error occurred during query planning` fails even though the statement succeeds) or `LIMIT 1` execution with `execute_datasets`, using the dataset's `catalog`/`schema` and default parameter values. Datasets with multi-value or range parameters are reported as `skipped`. Table / metric view datasets (`asset_name`) must resolve in Unity Catalog. No soak. |
+
+### Multiple bundles in one manifest
+
+One root-level manifest can drive several bundles (for example an infra bundle and an app bundle in the same repo):
+
+* Static gates: list each bundle in the wave's `validate_bundles` with its own `root` and `target`. The integrator validates each one; the gate notebook checks every entry was reported as `pass`.
+* Deploys: give each runtime target its own `bundle_root` and `bundle_target`. A `converge` session deploys each target from that target's bundle.
+* Deploy order across bundles is wave order: put the infra target's `converge` wave before the app's.
 
 ## ManualPrereq Object
 

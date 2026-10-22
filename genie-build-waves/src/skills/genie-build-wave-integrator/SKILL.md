@@ -73,6 +73,7 @@ For `hybrid` mode: only `edit`- and `converge`-mode sessions produce files to ch
 
 Run each check in the wave `gate` list. Interpret each check description and execute it:
 - **Bundle checks:** `bundle validate --strict --target <bundle_target>` via the Databricks CLI.
+- **Declared bundle validations:** if the wave has `validate_bundles`, run `bundle validate --strict --target <target>` from each entry's `root` (a relative `root` resolves against `build_root`), and record every entry in `bundle_validations` with `root` and `target` copied exactly as written in the manifest. Any non-`pass` fails the gate, and the gate notebook checks that every entry was reported. If a `gate` line asks for the same validation, run it once and reference the `bundle_validations` entry in that check's detail.
 - **Language checks:** typecheck, lint, test — only if a runtime is available; otherwise `skipped`.
 - **State checks:** table exists, row count > 0, app running, service active, model logged, etc. — via read-only SDK/CLI/SQL calls.
 - **Quality checks:** metric thresholds, schema matches, data validation.
@@ -117,6 +118,7 @@ Path: `build_root/<status_dir>/<run_id>/wave_<wave>_gate.json`:
   "sessions": {"03": "pass", "04": "fail"},
   "manual_prereqs": {"02": "done | missing"},
   "checks": [{"name": "bundle validate --strict", "result": "pass", "detail": ""}],
+  "bundle_validations": [{"root": "my-app", "target": "dev", "result": "pass | fail", "detail": "first error line when fail"}],
   "stray_files": [],
   "carryover_files": [{"path": "docs/sessions/2026-10-20_w3-09-routes.md", "kind": "summary | prior_run_code | owned_by_later_wave", "source": "run 376065156883918 / session 09", "staged": true}],
   "requests": [{"from": "07", "path": "package.json", "change": "..."}],
@@ -126,7 +128,7 @@ Path: `build_root/<status_dir>/<run_id>/wave_<wave>_gate.json`:
 }
 ```
 
-`status` is `pass` only if every session is `pass`, every manual prereq is `done`, no check `fail`ed and there are no strays and, in the last wave, no unclaimed carryover (in `git`/`hybrid` mode). Copy every session's `suppressions` into the gate file so a human can review them. Your `pass` is necessary but not sufficient when the wave has a `runtime_gate`: the gate notebook adds its own runtime verdict. The next job task reads this file and stops the run on `fail`, so write it even when you hit an error (use `status: "fail"` and put the error in `reason`).
+`status` is `pass` only if every session is `pass`, every manual prereq is `done`, no check `fail`ed, every `bundle_validations` entry is `pass`, and there are no strays and, in the last wave, no unclaimed carryover (in `git`/`hybrid` mode). Copy every session's `suppressions` into the gate file so a human can review them. Your `pass` is necessary but not sufficient when the wave has a `runtime_gate`: the gate notebook adds its own runtime verdict. The next job task reads this file and stops the run on `fail`, so write it even when you hit an error (use `status: "fail"` and put the error in `reason`).
 
 ### 8. Final response
 
