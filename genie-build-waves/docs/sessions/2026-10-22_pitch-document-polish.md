@@ -83,7 +83,7 @@ Checked every README claim against `databricks.yml`, the job YAMLs, the setup an
 | `8fc83dc` | docs: make deploy steps 4-5 actionable; fix smoke-test flag |
 | `e30eafb` | docs: app scaffolding command is `databricks apps init`, not `apps create` (Best Practice #2) |
 | `9a44b64` | docs: README accuracy pass against bundle source |
-| (next) | chore: default `project_name` "Genie Build Waves"; setup header lists 4 automations; source-linked skill-change wording |
+| `65aee75` | chore: default `project_name` "Genie Build Waves"; setup header lists 4 automations; source-linked skill-change wording |
 
 ## Files Modified
 
