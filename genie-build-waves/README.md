@@ -143,7 +143,7 @@ databricks bundle run setup_build_waves --target dev
 Run setup with `run_smoke=true` to verify Genie Code tasks work inside `for_each`:
 
 ```bash
-databricks bundle run setup_build_waves --target dev -p run_smoke=true
+databricks bundle run setup_build_waves --target dev --params run_smoke=true
 ```
 
 Pass = both iterations SUCCESS, each echoing its `session_id` and the nonce. Before a follow-up build, also read the `capability_probe` output: every check should be `ok` (and `deploy_permitted=yes`), otherwise `converge` sessions cannot work unattended.

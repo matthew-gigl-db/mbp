@@ -1219,13 +1219,23 @@ databricks bundle deploy --target dev \
 databricks bundle run setup_build_waves --target dev
 
 <span class="comment"># 3. Smoke test to verify Genie Code tasks work inside for_each</span>
-databricks bundle run setup_build_waves --target dev -p run_smoke=true
+databricks bundle run setup_build_waves --target dev --params run_smoke=true
 
-<span class="comment"># 4. Start the build from the Jobs UI (or CLI)</span>
-<span class="comment">#    Watch each wN_gate task for pass/fail</span>
+<span class="comment"># 4. Start the build (or click Run now on build_waves in the Jobs UI)</span>
+databricks bundle run build_waves --target dev
+<span class="comment">#    branch defaults to build_branch; override with --params branch=...</span>
+<span class="comment">#    Each wave runs wN_sessions &rarr; wN_integrate &rarr; wN_gate &rarr; wN_gate_check;</span>
+<span class="comment">#    the next wave starts only when wN_gate_check is true.</span>
+<span class="comment">#    Gate results: .build-status/&lt;run_id&gt;/wave_&lt;N&gt;_gate.json</span>
+<span class="comment">#    (converge waves also write wave_&lt;N&gt;_runtime.json)</span>
 
-<span class="comment"># 5. If a wave fails, repair run only the failed wave's tasks</span>
-<span class="comment">#    Earlier waves show as skipped; passing sessions are already committed</span></pre>
+<span class="comment"># 5. If a gate fails, later waves show as Excluded (never ran, no compute).</span>
+<span class="comment">#    Passing sessions are already committed. Fix the cause, then repair from</span>
+<span class="comment">#    the failed wave with dependents so wN_gate_check re-evaluates:</span>
+databricks jobs repair-run &lt;run_id&gt; --json <span class="string">'{
+  "rerun_tasks": ["wN_sessions", "wN_integrate", "wN_gate"],
+  "rerun_dependent_tasks": true
+}'</span></pre>
       </div>
     </div>
   </section>
