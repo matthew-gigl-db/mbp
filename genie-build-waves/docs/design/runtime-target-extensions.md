@@ -9,7 +9,12 @@ Design record for extending `runtime_targets` beyond `app | job | pipeline`. Ori
 | 1 | `dashboard` type; wave `validate_bundles` | **Implemented** (2026-10-22) |
 | 2 | `app` probes (HTTP, MCP initialize) as a `probe_auth` service principal + OTel / MLflow 3 traces (`min_traces`, `max_trace_errors`) | **Implemented** (2026-10-22); live SP auth proof to be run by a consumer project |
 | 3 | `genie_space` type, static checks | **Implemented** (2026-10-22) |
-| 4 | `genie_space` probe questions | Planned |
+| 4 | `genie_space` probe questions | Planned (second) |
+| 5 | Live proof and smoke coverage: `probe_auth` service principal from a real job run; Genie space `CAN_EDIT` in the smoke job | Planned (first) |
+| 6 | Pipeline data quality: expectation failures, dropped records | Planned (third) |
+| 7 | `table` type: data assertions (exists, rows, columns, freshness) | Planned (fourth) |
+
+Execution order: 5, 4, 6, 7. Phase 5 first because it closes the open risk in shipped work (Phases 2 and 3). Each phase is committed and pushed on its own.
 
 ## Decisions
 
@@ -18,7 +23,7 @@ Design record for extending `runtime_targets` beyond `app | job | pipeline`. Ori
 | Dashboard dataset check default | `EXPLAIN` (no data scanned). Option `execute_datasets: true` runs `SELECT * FROM (<query>) LIMIT 1`. |
 | Per-wave `bundle_target` vs structured list | Structured wave field `validate_bundles: [{root, target}]` instead of a per-wave override. Runtime targets already carry `bundle_root` / `bundle_target`. |
 | Genie probe questions default | `probe_mode: warn`. `fail` is opt-in. |
-| Custom agents | Stay `type: app`; probes add agent-level health without a new type. |
+| Custom agents | Stay `type: app`; probes add agent-level health without a new type. Agents run only on Databricks Apps, not Model Serving, so there is no `serving_endpoint` type (owner decision, 2026-10-22). |
 | Genie space / dashboard deploy default | `bundle deploy --target <t>` only, no `bundle run`. |
 
 ## Phase 1 (implemented)
@@ -91,6 +96,34 @@ Original plan:
 * Pass = the Conversation API produced a SQL query and it ran successfully within the timeout. Never judge answer correctness (LLM output is not deterministic).
 * One retry per question. `warn` records failures in `wave_<N>_runtime.json` without failing the wave; `fail` fails it.
 * Add each question's timeout to the gate task timeout.
+
+## Phase 5 (planned): live proof and smoke coverage
+
+* Run the smoke job for real with a manifest whose app target has `probes` and `probe_auth`, and record the result (pass, or the exact failure and fix).
+* Smoke `app_probe_check` also checks every `genie_space` target: the space resolves, and `get_space(include_serialized_space=True)` works as the job identity (the gate needs `CAN_EDIT`). `fail` on a missing grant, so the build doesn't discover it at the gate.
+
+## Phase 6 (planned): pipeline data quality
+
+Fields on `pipeline` targets, under `stability`:
+
+```json
+"stability": {"max_failed_records": 0, "max_dropped_records": 100}
+```
+
+* Read the checked update's `flow_progress` events from the pipeline event log: `data_quality.dropped_records` and `data_quality.expectations[].failed_records`, summed per flow and expectation. Only checked when a limit is set.
+* Report per-expectation counts in `wave_<N>_runtime.json`, so the converge session sees which rule failed. `expect_or_fail` violations already fail the update.
+
+## Phase 7 (planned): `table` data assertions
+
+For `workspace`-mode builds, whose output is tables rather than deployments. Replaces free-text gate lines like "table has > 0 rows".
+
+```json
+"features": {"type": "table", "name": "cat.sch.features", "min_rows": 1,
+             "required_columns": ["customer_id", "score"], "require_fresh_deployment": true}
+```
+
+* Resolves via `w.tables.get` (tables, views, materialized views, streaming tables). `required_columns` must be present. `min_rows` runs `COUNT(*)` on a warehouse (`warehouse_id` required when set). Freshness: the last Delta commit (`DESCRIBE HISTORY ... LIMIT 1`) after the build run started; views have no history, so freshness is skipped for them.
+* Not deployed by `bundle deploy`: an `execute` session writes it. Usable in `runtime_gate` of any wave, without a converge session.
 
 ## Files touched by each new type
 
