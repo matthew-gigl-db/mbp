@@ -9,7 +9,7 @@ Design record for extending `runtime_targets` beyond `app | job | pipeline`. Ori
 | 1 | `dashboard` type; wave `validate_bundles` | **Implemented** (2026-10-22) |
 | 2 | `app` probes (HTTP, MCP initialize) as a `probe_auth` service principal + OTel / MLflow 3 traces (`min_traces`, `max_trace_errors`) | **Implemented** (2026-10-22); live SP auth proof to be run by a consumer project |
 | 3 | `genie_space` type, static checks | **Implemented** (2026-10-22) |
-| 4 | `genie_space` probe questions | Planned (second) |
+| 4 | `genie_space` probe questions | **Implemented** (2026-10-22) |
 | 5 | Live proof and smoke coverage: `probe_auth` service principal from a real job run; Genie space `CAN_EDIT` in the smoke job | **Implemented** (2026-10-22); accepted-SP pass path needs a `CAN_USE` grant or fresh secret |
 | 6 | Pipeline data quality: expectation failures, dropped records | Planned (third) |
 | 7 | `table` type: data assertions (exists, rows, columns, freshness) | Planned (fourth) |
@@ -85,7 +85,18 @@ Original plan:
 * "Deployed in this run": needs a reliable timestamp on the space. Verify what the Genie space API exposes before committing to this check; fall back to `require_fresh_deployment: false` if it has none.
 * Deploy default: `bundle deploy` only.
 
-## Phase 4 (planned): `genie_space` probe questions
+## Phase 4 (implemented): `genie_space` probe questions
+
+**As built.** `check_genie_space` asks each `probe_questions` entry after the static checks pass (skipped otherwise) via `start_conversation_and_wait`, one retry in a new conversation. Pass = message `COMPLETED`, a query attachment, and `get_message_attachment_query_result` reports `SUCCEEDED`. `warn` failures go to the target's `warnings` (printed, and in the gate result and `wave_<N>_runtime.json`); `fail` adds them to the problems. Setup validates the fields and adds `2 × probe_timeout_seconds` per question to the gate timeout.
+
+Findings (real space, `[dev matthew_giglia] WanderBricks Analytics`):
+
+* A data question took 13 to 25 s and produced a `MEASURE()` query over the metric view; the attachment carries `statement_id` and `query_result_metadata.row_count`, and the result endpoint returns `SUCCEEDED`.
+* An off-topic question completes in about 5 s with status `COMPLETED` and only a text attachment. Status alone would pass it, so the query attachment is required.
+* A short timeout raises `TimeoutError` (`current status: ASKING_AI`), reported as a failure.
+* Deleting probe conversations was not attempted by the gate: it is a destructive call, and leaving them is harmless (they are in the build identity's history only).
+
+Original plan:
 
 ```json
 "probe_questions": ["How many orders last week?"],

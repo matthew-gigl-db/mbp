@@ -69,7 +69,10 @@
       "deploy_commands": ["bundle deploy --target dev"],
       "warehouse_id": "abcdef1234567890",
       "check_example_sql": true,
-      "sql_timeout_seconds": 120
+      "sql_timeout_seconds": 120,
+      "probe_questions": ["How many deployments were there last week?", "What is the error rate by day?"],
+      "probe_mode": "warn",
+      "probe_timeout_seconds": 120
     }
   },
 
