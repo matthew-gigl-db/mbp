@@ -8,7 +8,7 @@ Design record for extending `runtime_targets` beyond `app | job | pipeline`. Ori
 |---|---|---|
 | 1 | `dashboard` type; wave `validate_bundles` | **Implemented** (2026-10-22) |
 | 2 | `app` probes (HTTP, MCP initialize) as a `probe_auth` service principal + OTel / MLflow 3 traces (`min_traces`, `max_trace_errors`) | **Implemented** (2026-10-22); live SP auth proof to be run by a consumer project |
-| 3 | `genie_space` type, static checks | Planned |
+| 3 | `genie_space` type, static checks | **Implemented** (2026-10-22) |
 | 4 | `genie_space` probe questions | Planned |
 
 ## Decisions
@@ -61,7 +61,19 @@ Fields on `app` targets:
 * Run probes at the start of the soak, then require `min_traces` spans for the deployment **since the probe time**. An idle agent emits no traces, so a trace floor without probe traffic would fail healthy apps.
 * MCP: POST a JSON-RPC `initialize` with `Accept: application/json, text/event-stream`; pass = a result with `serverInfo`.
 
-## Phase 3 (planned): `genie_space` static checks
+## Phase 3 (implemented): `genie_space` static checks
+
+**As built.** Gate `check_genie_space`: `update_time` after the build run started (`require_fresh_deployment`), warehouse attached and existing (and equal to target `warehouse_id` if set), at least one table, every `data_sources.tables[].identifier` resolves via `w.tables.get` (metric views included), every `column_configs[].column_name` still exists in its table, every `instructions.example_question_sqls` passes `EXPLAIN` on the space's warehouse (`check_example_sql`, default on; parameterized examples `skipped`). SQL snippets (measures, filters) are only counted: they are fragments with no table context. Setup accepts the type, warns without `id`, validates `check_example_sql`, warns that `soak_minutes` is ignored, and adds 10 minutes to the gate timeout.
+
+Findings:
+
+* The SDK `GenieSpace` model has no timestamps (only `etag`), but the raw `GET /api/2.0/genie/spaces/<id>` returns `create_time` and `update_time`. On a scratch space (created, then trashed), `update_time` moved on a `serialized_space` update, a description-only update and an identical re-write. So it reliably means "written since"; a wave that may not re-write the space needs `require_fresh_deployment: false`.
+* `serialized_space` requires `CAN_EDIT` (SDK docstring). The gate reports a missing grant as such.
+* Titles are not unique in practice (two "Healthcare Encounter Analytics" spaces in this workspace). **Deviation:** instead of requiring `id`, a `name` must match exactly one title (paged `list_spaces`), as for dashboards; setup warns without `id`.
+* The `column_configs` check found real drift in 2 of 10 workspace spaces (configured columns that no longer exist, confirmed with `DESCRIBE TABLE`). Example SQL on metric views (`MEASURE(...)`) passes `EXPLAIN`: 15/15 and 4/4 on two real spaces; a wrong measure name and an unknown column fail with the planner's suggestion.
+* Open: the smoke job's capability probe does not yet check `CAN_EDIT` on the manifest's spaces.
+
+Original plan:
 
 * Require `id` (space titles are not unique; a name lookup must match exactly one).
 * Checks: warehouse attached, every referenced table and metric view resolves in UC.

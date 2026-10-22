@@ -42,7 +42,7 @@ The manifest supports three workflow modes that control how sessions operate and
 | `context_files` | string[] | No | Extra files (relative to `build_root`) for sessions to read before working. Project memory, coding standards, architecture docs, data dictionaries, model cards. |
 | `skills` | object | No | Overrides for skill locations. See Skills section. |
 | `task_retries` | object | No | Automatic retries for Genie Code tasks (sessions and integrators), for transient agent start-up errors such as `INTERNAL_ERROR: start_agent_run`. Keys: `max_retries` (default `2`; `0` disables), `min_retry_interval_seconds` (default `60`). Timeouts are never retried. Gate notebooks are not retried. |
-| `runtime_targets` | map<string, RuntimeTarget> | No | Deployable things (apps, jobs, pipelines, dashboards) that `converge` sessions deploy and `runtime_gate` checks. Keyed by a short target name. See RuntimeTarget. |
+| `runtime_targets` | map<string, RuntimeTarget> | No | Deployable things (apps, jobs, pipelines, dashboards, Genie spaces) that `converge` sessions deploy and `runtime_gate` checks. Keyed by a short target name. See RuntimeTarget. |
 | `probe_auth` | ProbeAuth | No | Default service principal for app `probes` (a target's own `probe_auth` overrides it). See Probe Object. |
 | `waves` | Wave[] | Yes | Ordered list of waves. Executed sequentially; sessions within a wave run in parallel. |
 
@@ -97,17 +97,19 @@ Describes how to deploy, run, and observe one deployable resource. Used by `conv
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `type` | string | Yes | `app`, `job`, `pipeline`, or `dashboard`. |
-| `name` | string | Conditional | Deployed resource name as it appears in the workspace (app name, or job/pipeline/dashboard display name including any dev-mode prefix). Used by the gate to look it up; a lookup that matches zero or several resources fails. Required for apps; otherwise `name` or `id`. |
-| `id` | string | No | Job id, pipeline id, or dashboard id. Preferred over `name` lookup. |
+| `type` | string | Yes | `app`, `job`, `pipeline`, `dashboard`, or `genie_space`. |
+| `name` | string | Conditional | Deployed resource name as it appears in the workspace (app name, or job/pipeline/dashboard display name or Genie space title, including any dev-mode prefix). Used by the gate to look it up; a lookup that matches zero or several resources fails. Required for apps; otherwise `name` or `id`. |
+| `id` | string | No | Job id, pipeline id, dashboard id, or Genie space id. Preferred over `name` lookup; strongly recommended for Genie spaces (titles are not unique, setup warns without it). |
 | `bundle_root` | string | No | Absolute workspace path of the bundle that defines the resource. Defaults to `build_root`. |
 | `bundle_target` | string | No | Target to deploy. Defaults to top-level `bundle_target`. |
 | `resource_key` | string | No | Bundle resource key (e.g. `trading_agent_app`), used for `bundle run <resource_key>`. |
-| `deploy_commands` | string[] | No | Databricks CLI commands (without the `databricks` prefix) run from `bundle_root`, in order, to deploy and start the target. Default for apps: `bundle deploy --target <t>` then `bundle run <resource_key> --target <t>` (plain deploy does not redeploy app code when config is unchanged). |
+| `deploy_commands` | string[] | No | Databricks CLI commands (without the `databricks` prefix) run from `bundle_root`, in order, to deploy and start the target. Default for apps: `bundle deploy --target <t>` then `bundle run <resource_key> --target <t>` (plain deploy does not redeploy app code when config is unchanged). Default for dashboards and Genie spaces: `bundle deploy --target <t>` only. |
 | `telemetry` | Telemetry | No | Where logs land and how to judge them. Strongly recommended for apps. |
 | `stability` | Stability | No | Soak and error budget. |
-| `require_fresh_deployment` | boolean | No | Gate requires the active deployment / run / update / published dashboard revision to have started after the build job run started. Default `true`. |
-| `warehouse_id` | string | No | `dashboard` only. Warehouse for the dataset checks. Defaults to the published dashboard's warehouse. |
+| `require_fresh_deployment` | boolean | No | Gate requires the active deployment / run / update / published dashboard revision / Genie space `update_time` to be after the build job run started. Default `true`. Genie spaces: every API update moves `update_time`, even an identical re-write; set `false` for a space the wave may not re-write, or its old `update_time` fails the gate. |
+| `warehouse_id` | string | No | `dashboard`: warehouse for the dataset checks (defaults to the published dashboard's). `genie_space`: the warehouse the space must use; the gate fails on a mismatch. |
+| `check_example_sql` | boolean | No | `genie_space` only. `EXPLAIN` every example SQL (`instructions.example_question_sqls`) on the space's warehouse. Default `true`. Parameterized examples are reported `skipped`. |
+| `sql_timeout_seconds` | integer | No | `genie_space` only. Per-statement timeout for example SQL. Default `120`. |
 | `execute_datasets` | boolean | No | `dashboard` only. `false` (default): validate each dataset query with `EXPLAIN` (no data scanned). `true`: run `SELECT * FROM (<query>) LIMIT 1`, which also catches runtime errors. |
 | `dataset_timeout_seconds` | integer | No | `dashboard` only. Per-dataset statement timeout. Default `120`. |
 | `probes` | Probe[] | No | `app` only. Authenticated HTTP requests the gate sends at the start of the soak, as the `probe_auth` service principal. Use for custom agents and MCP servers, where `RUNNING` alone does not prove the agent answers. |
@@ -171,6 +173,7 @@ Probes authenticate as that service principal (OAuth M2M: a `WorkspaceClient(cli
 | `job` | Latest run started after the build run started is `TERMINATED` / `SUCCESS`. |
 | `pipeline` | Latest update started after the build run started is `COMPLETED` (or `RUNNING` for continuous pipelines through the soak). |
 | `dashboard` | Published, with the published revision created after the build run started; a warehouse is set; every dataset resolves. Query datasets: `EXPLAIN` (default; a plan containing `Error occurred during query planning` fails even though the statement succeeds) or `LIMIT 1` execution with `execute_datasets`, using the dataset's `catalog`/`schema` and default parameter values. Datasets with multi-value or range parameters are reported as `skipped`. Table / metric view datasets (`asset_name`) must resolve in Unity Catalog. No soak. |
+| `genie_space` | Static, asks no questions. Space `update_time` after the build run started; a warehouse attached and existing (equal to `warehouse_id` if set); at least one table; every table / metric view in `data_sources.tables` resolves in Unity Catalog; every `column_configs` column still exists in its table (catches configs left behind by renamed or dropped columns); every example SQL passes `EXPLAIN` on the space's warehouse. SQL snippets (measures, filters) are fragments and are only counted. Reading the configuration needs `CAN_EDIT` on the space for the build job's identity. No soak. |
 
 ### Multiple bundles in one manifest
 

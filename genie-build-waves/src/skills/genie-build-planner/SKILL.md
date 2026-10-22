@@ -47,7 +47,7 @@ Read the project's existing files, README, architecture docs, and any requiremen
    - `hybrid` — mix of file authoring and notebook/SQL execution
 5. **What are the natural functional boundaries?** (modules, layers, data domains, components)
 6. **Is this an initial build or a follow-up?** If earlier waves already ran (there is a `waves.json`, `docs/sessions/` summaries, a gate history), you are planning a **follow-up**: append new waves to the existing manifest and keep earlier waves unchanged. See "Follow-up builds" below.
-7. **What has to deploy and run to prove it works?** List the apps, jobs and pipelines, which bundle defines each, the target, and where their telemetry lands (e.g. the app's OTel logs table). These become `runtime_targets`.
+7. **What has to deploy and run to prove it works?** List the apps, jobs, pipelines, dashboards and Genie spaces, which bundle defines each, the target, and where their telemetry lands (e.g. the app's OTel logs table). These become `runtime_targets`.
 
 ## Step 2: Decompose into sessions
 
@@ -108,6 +108,8 @@ The initial build is wide and parallel and its gates are static (files exist, bu
 Define each target once in top-level `runtime_targets` with `deploy_commands`, `telemetry` (`logs_table`, `error_patterns`, `ignore_patterns`, `required_markers`) and `stability` (`soak_minutes`, `max_errors`). Seed `error_patterns` / `ignore_patterns` from what the conversation already saw in the logs.
 
 For custom agents and MCP servers (still `type: app`), `RUNNING` does not prove the agent answers. Add `probes` (a health path with `response_regex`, and `{"path": "/mcp", "mcp_initialize": true}` for MCP) and the trace sources the project already has: the app's OTel spans table in Unity Catalog (`telemetry.traces_table`) and/or the MLflow 3 experiment its agent logs to (`telemetry.mlflow_experiment_id`), plus `stability.min_traces: 1` and `max_trace_errors: 0`, so the probe traffic must show up as clean traces. Look for these first (`*_otel_spans` / `*_otel_logs` tables, the agent's experiment) instead of asking. Probes authenticate as a service principal: set `probe_auth` (`secret_scope`, `client_id_key`, `client_secret_key`) to a secret scope that holds its OAuth client id and secret. The SP needs `CAN_USE` on the app; if the scope or grant doesn't exist yet, add a `manual_prereqs` entry. The smoke job's `app_probe_check` must pass before you rely on probes.
+
+For a Genie space (`type: genie_space`), set `id` (titles are not unique; read it from `bundle summary` or the Genie list). The gate checks it statically: updated in this run, warehouse attached, every table and metric view resolves, `column_configs` match the current columns, example SQL passes `EXPLAIN`. Put its converge wave after the waves that build its tables and metric views. If the wave may leave the space unchanged, set `require_fresh_deployment: false`. The build job's identity needs `CAN_EDIT` on the space to read its configuration.
 
 If a target depends on something outside the project (another bundle's secrets, infra grants), either put a `configure` wave before it or list it as a `manual_prereqs` entry. A converge session will stop as `blocked` rather than work around it.
 

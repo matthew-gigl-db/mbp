@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Follow-up build for an AppKit app after the initial parallel build (waves 0-4, omitted here). Wave 5 fixes known compile errors in parallel; waves 6-7 converge sequentially until the app and its post-deploy job are stable; wave 8 converges the ops dashboard and validates both bundles.",
+  "description": "Follow-up build for an AppKit app after the initial parallel build (waves 0-4, omitted here). Wave 5 fixes known compile errors in parallel; waves 6-7 converge sequentially until the app and its post-deploy job are stable; wave 8 converges the ops dashboard and validates both bundles; wave 9 converges the Genie space over the app's metric views.",
   "workflow": {"mode": "git"},
   "repo_root": "/Workspace/Users/you@example.com/my-repo",
   "bundle_root": "/Workspace/Users/you@example.com/my-repo/my-app",
@@ -60,6 +60,16 @@
       "deploy_commands": ["bundle deploy --target dev"],
       "execute_datasets": false,
       "dataset_timeout_seconds": 120
+    },
+    "ops_genie_space": {
+      "type": "genie_space",
+      "id": "01f0aaaabbbbccccddddeeeeffff0000",
+      "name": "[dev your_name] My App Ops Genie",
+      "bundle_target": "dev",
+      "deploy_commands": ["bundle deploy --target dev"],
+      "warehouse_id": "abcdef1234567890",
+      "check_example_sql": true,
+      "sql_timeout_seconds": 120
     }
   },
 
@@ -156,6 +166,26 @@
           "max_attempts": 4,
           "timeout_minutes": 90,
           "depends_on": ["17"]
+        }
+      ]
+    },
+    {
+      "wave_id": "9",
+      "name": "Converge: Genie space resolves against the current metric views",
+      "gate": ["Session 19 status is pass with a final attempt classified stable"],
+      "runtime_gate": ["ops_genie_space"],
+      "sessions": [
+        {
+          "session_id": "19",
+          "title": "Deploy Genie space, check tables, column configs and example SQL, fix until clean",
+          "plan_file": "19_converge_ops_genie_space.md",
+          "mode": "converge",
+          "scope": "Deploy the bundle so the Genie space is written, check that every table and metric view resolves, every column config matches a current column, and every example SQL passes EXPLAIN on the space's warehouse; fix the space definition and repeat until clean.",
+          "runtime_targets": ["ops_genie_space"],
+          "owned_paths": ["resources/genie/**", "src/genie/**"],
+          "max_attempts": 4,
+          "timeout_minutes": 90,
+          "depends_on": ["18"]
         }
       ]
     }
