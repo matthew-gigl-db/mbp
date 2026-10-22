@@ -7,7 +7,7 @@ Design record for extending `runtime_targets` beyond `app | job | pipeline`. Ori
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | `dashboard` type; wave `validate_bundles` | **Implemented** (2026-10-22) |
-| 2 | `app` probes (HTTP, MCP initialize) + `traces_table` / `min_traces` | Planned |
+| 2 | `app` probes (HTTP, MCP initialize) + `traces_table` / `min_traces` | **Implemented** (2026-10-22); job-identity auth proof pending a smoke run |
 | 3 | `genie_space` type, static checks | Planned |
 | 4 | `genie_space` probe questions | Planned |
 
@@ -29,7 +29,17 @@ Verified behavior that shaped the design: `EXPLAIN` on a query with an analysis 
 
 **`validate_bundles`.** The integrator runs `bundle validate --strict --target <target>` from each entry's `root` and reports `bundle_validations` in the gate file. The gate notebook fails the wave if any declared entry is missing or not `pass` (roots compared after resolving against `build_root`). The setup notebook rejects entries without `root` and `target`.
 
-## Phase 2 (planned): app probes for custom agents
+## Phase 2 (implemented): app probes for custom agents
+
+**As built.** Shared module `src/notebooks/app_probes.py` (used by the gate and the smoke job). Gate `check_app` runs probes after the deployment/state checks, at the start of the soak, then `check_app_traces` after the logs check. New smoke task `app_probe_check` (notebook, not Genie Code) runs every app target's probes, default `GET /`, as the job's run-as identity and fails on auth or probe failure; `skipped` when no app is running. Setup validates probe paths (no hosts), `min_traces` needs `traces_table`, and adds probe and trace-wait time to the gate timeout.
+
+Findings that changed the plan:
+
+* Spans carry no deployment id (resource attributes: `app.id`, `app.name`, `service.name`, `workspace.id`, process/host only). Traces are scoped by `service_name` + time since the probes.
+* An idle app still emits `SPAN_KIND_CLIENT` spans every 5 minutes (its own telemetry export): 26 in 2 hours on `lakeloom-ai-dev` with no traffic and zero SERVER spans. Counting every kind would pass an app that served nothing, so `trace_span_kinds` defaults to `["SPAN_KIND_SERVER"]`.
+* Ad hoc HTTP to app URLs from an interactive assistant session is blocked by policy, and interactive success would not prove the job identity anyway. The smoke task is the proof.
+
+Original plan:
 
 Fields on `app` targets:
 

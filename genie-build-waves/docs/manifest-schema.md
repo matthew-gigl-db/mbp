@@ -109,6 +109,7 @@ Describes how to deploy, run, and observe one deployable resource. Used by `conv
 | `warehouse_id` | string | No | `dashboard` only. Warehouse for the dataset checks. Defaults to the published dashboard's warehouse. |
 | `execute_datasets` | boolean | No | `dashboard` only. `false` (default): validate each dataset query with `EXPLAIN` (no data scanned). `true`: run `SELECT * FROM (<query>) LIMIT 1`, which also catches runtime errors. |
 | `dataset_timeout_seconds` | integer | No | `dashboard` only. Per-dataset statement timeout. Default `120`. |
+| `probes` | Probe[] | No | `app` only. Authenticated HTTP requests the gate sends at the start of the soak, as the build job's run-as identity. Use for custom agents and MCP servers, where `RUNNING` alone does not prove the agent answers. |
 
 Dashboards deploy with `bundle deploy` alone (deploy publishes them), so `deploy_commands` defaults to `bundle deploy --target <t>` and `resource_key` is not needed.
 
@@ -122,6 +123,9 @@ Dashboards deploy with `bundle deploy` alone (deploy publishes them), so `deploy
 | `error_patterns` | string[] | Regexes (matched against `body`) that count as errors in addition to `severity_text IN ('ERROR','FATAL')`. Default: `error TS\\d+`, `ELIFECYCLE`, `Error building app`, `Unhandled`, `UnhandledPromiseRejection`, `FATAL`. |
 | `ignore_patterns` | string[] | Regexes for known-benign lines to exclude from the error count (e.g. `Updated file:`). |
 | `required_markers` | string[] | Regexes that must each match at least one runtime log line for the active deployment (e.g. `listening on`, `pollers started`). |
+| `traces_table` | string | UC table with OpenTelemetry spans (columns `time`, `date`, `service_name`, `kind`, `trace_id`). Required for `stability.min_traces`. |
+| `trace_service_name` | string | `service_name` of the app's spans. Default: the app name. |
+| `trace_span_kinds` | string[] | Span kinds that count toward `min_traces`. Default `["SPAN_KIND_SERVER"]` (inbound requests). Apps also emit periodic `SPAN_KIND_CLIENT` spans for their own telemetry export, so counting every kind passes an app that served nothing. `[]` counts all kinds. |
 
 ### Stability Object
 
@@ -129,12 +133,28 @@ Dashboards deploy with `bundle deploy` alone (deploy publishes them), so `deploy
 |---|---|---|
 | `soak_minutes` | integer | How long the gate watches the target after it is up. During the soak the app must stay `RUNNING` with the same active deployment. Default `10`. |
 | `max_errors` | integer | Error-line budget for the active deployment. Default `0`. |
+| `min_traces` | integer | `app` only. Minimum distinct traces in `telemetry.traces_table` since the probes ran (or since the deployment, without probes). Spans carry no deployment id, so they are scoped by `trace_service_name` and time. Pair with `probes`: an idle app emits no request spans. |
+| `traces_wait_minutes` | integer | How long after the soak the gate keeps polling for `min_traces` (span ingestion lag). Default `5`. |
+
+### Probe Object
+
+| Field | Type | Description |
+|---|---|---|
+| `path` | string | Required. Path on the app, starting with `/` (e.g. `/api/health`). The host always comes from `w.apps.get(name).url`; a full URL is rejected by setup. |
+| `method` | string | `GET` (default), `POST` or `HEAD`. |
+| `json` | object | Optional JSON request body. |
+| `expect_status` | integer or integer[] | Accepted status codes. Default `200`. |
+| `response_regex` | string | Regex the response body must match. |
+| `mcp_initialize` | boolean | Send an MCP JSON-RPC `initialize` (POST, `Accept: application/json, text/event-stream`). Passes when the reply (JSON or SSE) has `result.serverInfo`. |
+| `timeout_seconds` | integer | Per-request timeout. Default `30`. |
+
+Probes use `WorkspaceClient().config.authenticate()` headers, so the build job's run-as identity needs `CAN_USE` on the app. Redirects are not followed: a redirect to sign-in is reported as "credentials not accepted", a 401/403 as missing access. A failing probe is retried once after 10 seconds (cold start). The smoke job's `app_probe_check` task runs the same probes as the job identity, so run `setup_build_waves` with `run_smoke=true` once the app is up, before relying on probes in a build.
 
 ### What the runtime gate checks
 
 | Type | Checks |
 |---|---|
-| `app` | Active deployment `SUCCEEDED` and (if fresh required) created after the build run started; no pending deployment; `app_status` `RUNNING` and `compute_status` `ACTIVE`; unchanged through the soak; error lines for the active deployment ≤ `max_errors`; every `required_markers` regex matched. |
+| `app` | Active deployment `SUCCEEDED` and (if fresh required) created after the build run started; no pending deployment; `app_status` `RUNNING` and `compute_status` `ACTIVE`; unchanged through the soak; error lines for the active deployment ≤ `max_errors`; every `required_markers` regex matched. With `probes`: every probe passes at the start of the soak. With `min_traces`: enough traces since the probes ran. |
 | `job` | Latest run started after the build run started is `TERMINATED` / `SUCCESS`. |
 | `pipeline` | Latest update started after the build run started is `COMPLETED` (or `RUNNING` for continuous pipelines through the soak). |
 | `dashboard` | Published, with the published revision created after the build run started; a warehouse is set; every dataset resolves. Query datasets: `EXPLAIN` (default; a plan containing `Error occurred during query planning` fails even though the statement succeeds) or `LIMIT 1` execution with `execute_datasets`, using the dataset's `catalog`/`schema` and default parameter values. Datasets with multi-value or range parameters are reported as `skipped`. Table / metric view datasets (`asset_name`) must resolve in Unity Catalog. No soak. |

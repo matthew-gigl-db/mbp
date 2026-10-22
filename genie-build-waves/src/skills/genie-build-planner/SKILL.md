@@ -107,6 +107,8 @@ The initial build is wide and parallel and its gates are static (files exist, bu
 
 Define each target once in top-level `runtime_targets` with `deploy_commands`, `telemetry` (`logs_table`, `error_patterns`, `ignore_patterns`, `required_markers`) and `stability` (`soak_minutes`, `max_errors`). Seed `error_patterns` / `ignore_patterns` from what the conversation already saw in the logs.
 
+For custom agents and MCP servers (still `type: app`), `RUNNING` does not prove the agent answers. Add `probes` (a health path with `response_regex`, and `{"path": "/mcp", "mcp_initialize": true}` for MCP) and, if the app exports spans, `telemetry.traces_table` plus `stability.min_traces: 1` so the gate requires the probe traffic to show up as traces. Probes run as the build job's identity: it needs `CAN_USE` on the app, and the smoke job's `app_probe_check` must pass before you rely on them.
+
 If a target depends on something outside the project (another bundle's secrets, infra grants), either put a `configure` wave before it or list it as a `manual_prereqs` entry. A converge session will stop as `blocked` rather than work around it.
 
 ## Step 4: Write plan files

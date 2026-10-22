@@ -3,6 +3,8 @@
 # The setup notebook injects a random nonce into the inputs. If the agent
 # echoes the correct nonce, we know {{input.*}} resolved in genie_task.parameters.
 # Patched into genie_tasks by the setup job (run with run_smoke=true to patch + run).
+# Setup also adds capability_probe (Genie Code, read-only) and app_probe_check
+# (notebook: authenticated app probes as the job's run-as identity).
 
 resources:
   jobs:

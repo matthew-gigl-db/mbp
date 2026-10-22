@@ -27,9 +27,14 @@
         "log_source_attribute": "app.log_source",
         "error_patterns": ["error TS\\d+", "ELIFECYCLE", "Error building app", "Unhandled", "FATAL"],
         "ignore_patterns": ["Updated file:", "Skipping query type generation"],
-        "required_markers": ["listening on"]
+        "required_markers": ["listening on"],
+        "traces_table": "my_catalog.my_schema.my_app_otel_spans"
       },
-      "stability": {"soak_minutes": 10, "max_errors": 0}
+      "probes": [
+        {"path": "/api/health", "expect_status": 200, "response_regex": "\"status\":\\s*\"ok\""},
+        {"path": "/mcp", "mcp_initialize": true}
+      ],
+      "stability": {"soak_minutes": 10, "max_errors": 0, "min_traces": 1}
     },
     "post_deploy_job": {
       "type": "job",

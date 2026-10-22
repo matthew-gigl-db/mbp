@@ -40,7 +40,7 @@ Each wave follows a four-phase pattern:
 | **Initial build** | Wide, parallel | `edit` / `execute` / `configure`, disjoint ownership | Static (validate, files, tables) | The pieces exist |
 | **Follow-up (convergence)** | Sequential, one session each | `converge`: deploy, read telemetry, fix, redeploy | Static + deterministic `runtime_gate` | It deploys, runs, stays up, logs are clean |
 
-A follow-up appends waves to the same `waves.json`. Optionally start with a parallel `edit` wave for known, file-disjoint errors; then add one `converge` wave per deployable thing, in dependency order. Each `converge` session gets `runtime_targets` (how to deploy it, where its OTel logs land, what "stable" means) and loops up to `max_attempts`. The gate notebook then checks the target itself. For an app: deployment succeeded during this run, `RUNNING`, unchanged through a soak window, no error lines for that deployment, startup markers present. For a job or pipeline: its latest run or update since the build started succeeded. For an AI/BI dashboard: published during this run, and every dataset query passes `EXPLAIN` (or runs with `LIMIT 1` when `execute_datasets` is set). **A passing stable build is part of the pass criteria.**
+A follow-up appends waves to the same `waves.json`. Optionally start with a parallel `edit` wave for known, file-disjoint errors; then add one `converge` wave per deployable thing, in dependency order. Each `converge` session gets `runtime_targets` (how to deploy it, where its OTel logs land, what "stable" means) and loops up to `max_attempts`. The gate notebook then checks the target itself. For an app: deployment succeeded during this run, `RUNNING`, unchanged through a soak window, no error lines for that deployment, startup markers present; for custom agents and MCP servers, optional authenticated `probes` (HTTP or MCP `initialize`) pass and `min_traces` traces arrive. For a job or pipeline: its latest run or update since the build started succeeded. For an AI/BI dashboard: published during this run, and every dataset query passes `EXPLAIN` (or runs with `LIMIT 1` when `execute_datasets` is set). **A passing stable build is part of the pass criteria.**
 
 Deploys are single-writer: the setup job rejects any wave where a deploying session (`converge` or `allow_deploy`) shares the wave with another session. See `examples/converge-waves.json`.
 
@@ -53,12 +53,13 @@ A manifest can span several bundles. List them in a wave's `validate_bundles` (`
 | Session Runner skill | `src/skills/genie-build-session-runner/SKILL.md` | Prompt for one session: load manifest, read plan, implement within owned paths, validate, write status JSON |
 | Wave Integrator skill | `src/skills/genie-build-wave-integrator/SKILL.md` | Prompt for per-wave integration: collect status, check strays, commit+push, write gate JSON |
 | Build Planner skill | `src/skills/genie-build-planner/SKILL.md` | Planning guide you give Genie Code in your project folder: decompose into waves/sessions, write plans and `waves.json`. Not published to UC |
-| Gate check notebook | `src/notebooks/wave_gate_check.ipynb` | Deterministic stop: reads gate + status files; for `runtime_gate` waves also checks app/job/pipeline/dashboard state, soak stability, OTel error lines and dashboard datasets itself; checks `validate_bundles` results |
+| Gate check notebook | `src/notebooks/wave_gate_check.ipynb` | Deterministic stop: reads gate + status files; for `runtime_gate` waves also checks app/job/pipeline/dashboard state, soak stability, OTel error lines, app probes and traces, and dashboard datasets itself; checks `validate_bundles` results |
+| App probe module | `src/notebooks/app_probes.py` | Authenticated HTTP / MCP `initialize` probes against an app's own URL, shared by the gate and the smoke job |
 | Placeholder notebook | `src/notebooks/genie_task_placeholder.ipynb` | Stand-in for `genie_task` (bundle CLI has no schema); fails loud if run |
 | Setup notebook | `src/notebooks/setup_build_waves_job.ipynb` | Validates the manifest, publishes the runner and integrator skills to UC, creates/reuses automations, generates the task graph (with per-task timeouts and retries) from the manifest, resets the build and smoke jobs |
 | Build job YAML | `resources/build_waves.job.yml` | Shell job (one placeholder); setup notebook replaces with full wave graph |
 | Setup job YAML | `resources/setup_build_waves.job.yml` | Runs the setup notebook. Run it after every deploy (deploy restores the placeholders); `run_smoke=true` also runs the smoke job |
-| Smoke job YAML | `resources/build_waves_smoke.job.yml` | 2-item `for_each` nonce echo plus a read-only `capability_probe` (CLI, apps/jobs read, SQL, telemetry) for converge sessions |
+| Smoke job YAML | `resources/build_waves_smoke.job.yml` | 2-item `for_each` nonce echo, a read-only `capability_probe` (CLI, apps/jobs read, SQL, telemetry) for converge sessions, and `app_probe_check` (`src/notebooks/app_probe_check.ipynb`), which proves the job identity can make authenticated app requests |
 
 ## Getting started with Genie Code
 
@@ -149,7 +150,7 @@ Run setup with `run_smoke=true` to verify Genie Code tasks work inside `for_each
 databricks bundle run setup_build_waves --target dev --params run_smoke=true
 ```
 
-Pass = both iterations SUCCESS, each echoing its `session_id` and the nonce. Before a follow-up build, also read the `capability_probe` output: every check should be `ok` (and `deploy_permitted=yes`), otherwise `converge` sessions cannot work unattended.
+Pass = both iterations SUCCESS, each echoing its `session_id` and the nonce. Before a follow-up build, also read the `capability_probe` output: every check should be `ok` (and `deploy_permitted=yes`), otherwise `converge` sessions cannot work unattended. If the manifest's apps use `probes` or `min_traces`, `app_probe_check` must be `pass`; `skipped` means no app was running, so re-run the smoke once it is.
 
 ### 5. Start the build
 
