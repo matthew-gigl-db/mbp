@@ -1259,7 +1259,7 @@ databricks jobs repair-run &lt;run_id&gt; --json <span class="string">'{
         </li>
         <li>
           <h3>Use the Databricks AppKit and manual CLI for app bundle creation</h3>
-          <p>When your build target is a Databricks App, create the app bundle manually using the Databricks CLI (<code>databricks apps create</code>) or the AppKit scaffold flow. Do not let a build-wave session auto-scaffold an app from scratch — the framework is designed to build on top of a well-structured existing bundle, not to invent one. The <code>converge</code> session deploys and verifies, but the bundle itself should exist before the build starts.</p>
+          <p>When your build target is a Databricks App, create the app bundle manually using the Databricks CLI (<code>databricks apps init</code>) or the AppKit scaffold flow. Do not let a build-wave session auto-scaffold an app from scratch — the framework is designed to build on top of a well-structured existing bundle, not to invent one. The <code>converge</code> session deploys and verifies, but the bundle itself should exist before the build starts.</p>
         </li>
         <li>
           <h3>Curate your designs before using this package</h3>
