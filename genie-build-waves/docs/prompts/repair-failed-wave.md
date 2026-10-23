@@ -64,6 +64,21 @@ In the UI: choose **Repair run** and select the failed wave's tasks **and** ever
 
 Keep `rerun_dependent_tasks=True` in every case. Without it, nothing after the named tasks runs.
 
+**Pass `job_parameters` on every repair.** A `repair_run` falls back to the job-level parameter defaults when `job_parameters` is omitted. The setup job writes these defaults from the manifest, but if the original run was started with custom parameters (e.g. a different branch), the repair would silently use the wrong values. Always pass the same `branch`, `build_root`, and `manifest_path` the original run used:
+
+```python
+w.jobs.repair_run(
+    run_id=[run_id],
+    rerun_tasks=[...],
+    rerun_dependent_tasks=True,
+    job_parameters={
+        "branch": "[feature-branch]",
+        "build_root": "[build_root]",
+        "manifest_path": "[manifest_path]",
+    },
+)
+```
+
 ### Step 3: Fresh run fallback
 
 If the build job was redeployed and re-patched since the failed run, Jobs refuses to repair it ("job structure has changed"). Start a new run with `only` set to the failed wave's task keys and everything after it:
@@ -98,3 +113,13 @@ A convergence wave can commit (its session passed) and still fail on `runtime_ga
 ---
 
 _This prompt is generic. Adapt the placeholders for your run ID, job ID, and wave number._
+
+## Retarget after merge
+
+After a feature branch is merged to main and deleted on the remote, the build job's `branch` parameter default still points at the deleted branch. The integrator will fail with `branch not found on remote` on the next run. To retarget:
+
+1. Create a new feature branch from main.
+2. Update `branch` in `waves.json` to the new branch name.
+3. Re-deploy the bundle with `--var="build_branch=<new-branch>"`.
+4. Re-run the setup job to patch the build job's parameter defaults.
+5. Start a new build run.

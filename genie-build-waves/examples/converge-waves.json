@@ -25,8 +25,7 @@
         "logs_table": "my_catalog.my_schema.my_app_otel_logs",
         "deployment_id_attribute": "app.deployment_id",
         "log_source_attribute": "app.log_source",
-        "error_patterns": ["error TS\\d+", "ELIFECYCLE", "Error building app", "Unhandled", "FATAL"],
-        "ignore_patterns": ["Updated file:", "Skipping query type generation"],
+        "ignore_patterns": ["App did not respect SIGTERM timeout", "\\[ELIFECYCLE\\]", "Updated file:", "Skipping query type generation"],
         "required_markers": ["listening on"],
         "traces_table": "my_catalog.my_schema.my_app_otel_spans",
         "mlflow_experiment_id": "1234567890123456"

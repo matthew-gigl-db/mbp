@@ -129,8 +129,8 @@ Dashboards deploy with `bundle deploy` alone (deploy publishes them), so `deploy
 | `logs_table` | string | UC table with OpenTelemetry logs (e.g. the app's `telemetry_export_destinations` logs table). Expected OTel columns: `time`, `date`, `severity_text`, `body` (variant), `attributes` (variant). |
 | `deployment_id_attribute` | string | Attribute key holding the app deployment id. Default `app.deployment_id`. |
 | `log_source_attribute` | string | Attribute key distinguishing build vs runtime logs. Default `app.log_source` (values seen: `BUILD`, `SYSTEM`, `APP`). |
-| `error_patterns` | string[] | Regexes (matched against `body`) that count as errors in addition to `severity_text IN ('ERROR','FATAL')`. Default: `error TS\\d+`, `ELIFECYCLE`, `Error building app`, `Unhandled`, `UnhandledPromiseRejection`, `FATAL`. |
-| `ignore_patterns` | string[] | Regexes for known-benign lines to exclude from the error count (e.g. `Updated file:`). |
+| `error_patterns` | string[] | Regexes (matched against `body`) that count as errors in addition to `severity_text IN ('ERROR','FATAL')`. Default: `error TS\\d+`, `Error building app`, `Unhandled`, `UnhandledPromiseRejection`, `FATAL`, `"level":"(error|fatal)"`. |
+| `ignore_patterns` | string[] | Regexes for known-benign lines to exclude from the error count. Default: `App did not respect SIGTERM timeout`, `[ELIFECYCLE]` (old-deployment shutdown noise during redeploy). Add project-specific lines (e.g. `Updated file:`). |
 | `required_markers` | string[] | Regexes that must each match at least one runtime log line for the active deployment (e.g. `listening on`, `pollers started`). |
 | `traces_table` | string | UC table with OpenTelemetry spans (columns `time`, `date`, `service_name`, `kind`, `trace_id`, `status.code`), e.g. the app's `*_otel_spans` table. A trace source for `min_traces` / `max_trace_errors`. |
 | `mlflow_experiment_id` | string | MLflow 3 experiment the app (or agent) logs traces to. The other trace source: counted with `mlflow.search_traces` on trace metadata only (`trace.timestamp_ms >=` probe time, no span download). Error traces = state `ERROR`. |
