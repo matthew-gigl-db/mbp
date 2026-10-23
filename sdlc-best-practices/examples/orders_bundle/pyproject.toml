@@ -1,0 +1,31 @@
+[project]
+name = "orders_lib"
+version = "0.1.0"
+description = "Business rules and quality gate for the orders medallion data product."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+# Entry point used by the job's python_wheel_task (package_name: orders_lib).
+quality_gate = "orders_lib.quality_gate:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/orders_lib"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]

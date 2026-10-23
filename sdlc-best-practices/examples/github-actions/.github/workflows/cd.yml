@@ -1,0 +1,115 @@
+# Continuous delivery from main: build once, promote the same commit through
+# tst -> uat -> prod. Promotion gates live in GitHub environment protection rules:
+#   tst        no reviewers (automatic on merge)
+#   uat        optional reviewers (business validation)
+#   prod-plan  no reviewers, main-only deployment branch rule. Federated to the SAME prod
+#              deploy service principal (the plan must read that principal's deployment
+#              state); it only ever runs `bundle validate` and `bundle plan`.
+#   prod       required reviewers + main-only deployment branch rule
+#
+# Rollback: run this workflow manually (workflow_dispatch) with `ref` set to the
+# last good release tag. The same commit is re-validated and re-deployed.
+
+name: cd
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - orders_bundle/**
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit SHA or release tag to deploy (rollback). Empty = main HEAD.
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+# Releases are serialized; a newer merge waits instead of cancelling a running deploy.
+concurrency:
+  group: cd-orders
+  cancel-in-progress: false
+
+jobs:
+  unit:
+    name: unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: orders_bundle
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - run: uv run --extra dev ruff check .
+      - run: uv run --extra dev pytest -q
+
+  tst:
+    needs: unit
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      target: tst
+      environment: tst
+      ref: ${{ inputs.ref }}
+      integration_test: true
+
+  uat:
+    needs: tst
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      target: uat
+      environment: uat
+      ref: ${{ inputs.ref }}
+
+  plan-prod:
+    name: plan prod
+    needs: uat
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      target: prod
+      environment: prod-plan
+      ref: ${{ inputs.ref }}
+      action: plan
+
+  # Reviewers approve the `prod` environment after reading the plan in the
+  # plan-prod job summary. Exactly that plan is applied -- nothing re-planned.
+  prod:
+    needs: plan-prod
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      target: prod
+      environment: prod
+      ref: ${{ inputs.ref }}
+      plan_artifact: plan-prod
+
+  release-tag:
+    name: tag release
+    needs: prod
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Tag the deployed commit
+        run: |
+          TAG="orders-prod-$(date -u +%Y%m%d)-${GITHUB_RUN_NUMBER}"
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "Deployed and tagged \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"

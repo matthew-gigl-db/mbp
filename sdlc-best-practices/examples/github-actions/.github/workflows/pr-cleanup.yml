@@ -1,0 +1,28 @@
+# Destroy the per-PR deployment when the pull request is merged or closed, so
+# ephemeral jobs, pipelines, schemas, and files never accumulate in the dev workspace.
+
+name: pr-cleanup
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+    paths:
+      - orders_bundle/**
+
+permissions:
+  contents: read
+
+jobs:
+  destroy-ci:
+    name: destroy ci
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      target: ci
+      environment: ci
+      action: destroy
+      pr_number: ${{ format('{0}', github.event.pull_request.number) }}

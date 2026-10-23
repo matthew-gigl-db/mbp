@@ -1,0 +1,43 @@
+# Scheduled refresh: update the pipeline, then run a deterministic data quality gate.
+# The schedule's pause status is NOT set here; presets.trigger_pause_status decides it
+# per target (paused everywhere except prod).
+resources:
+  jobs:
+    orders_refresh:
+      name: orders_refresh
+      description: Refreshes the orders medallion pipeline and fails if gold data breaks quality rules.
+      max_concurrent_runs: 1
+      schedule:
+        quartz_cron_expression: ${var.refresh_cron}
+        timezone_id: UTC
+      parameters:
+        - name: catalog
+          default: ${resources.schemas.orders_schema.catalog_name}
+        - name: schema
+          default: ${resources.schemas.orders_schema.name}
+      tasks:
+        - task_key: refresh_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.orders_medallion.id}
+            full_refresh: false
+
+        - task_key: quality_gate
+          depends_on:
+            - task_key: refresh_pipeline
+          environment_key: default
+          python_wheel_task:
+            package_name: orders_lib
+            entry_point: quality_gate
+            parameters:
+              - --catalog
+              - "{{job.parameters.catalog}}"
+              - --schema
+              - "{{job.parameters.schema}}"
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              # Built by the artifacts block in databricks.yml on every deploy.
+              - ../../dist/*.whl

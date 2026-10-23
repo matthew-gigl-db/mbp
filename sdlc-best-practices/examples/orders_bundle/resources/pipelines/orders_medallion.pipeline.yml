@@ -1,0 +1,23 @@
+# Serverless Lakeflow Spark Declarative Pipeline: bronze (Auto Loader) -> silver -> gold.
+# Catalog, schema, and the landing path are all derived from other bundle resources,
+# so the same file deploys unchanged to dev, ci, tst, uat, and prod.
+resources:
+  pipelines:
+    orders_medallion:
+      name: orders_medallion
+      catalog: ${resources.schemas.orders_schema.catalog_name}
+      schema: ${resources.schemas.orders_schema.name}
+      serverless: true
+      continuous: false
+      photon: true
+      root_path: ../../src/pipelines/orders_medallion
+      libraries:
+        - glob:
+            include: ../../src/pipelines/orders_medallion/transformations/**
+      # Shared business rules come from the bundle's own Python package (pyproject.toml
+      # at the bundle root), installed into the pipeline environment.
+      environment:
+        dependencies:
+          - --editable ${workspace.file_path}
+      configuration:
+        orders.landing_path: /Volumes/${resources.volumes.landing_volume.catalog_name}/${resources.volumes.landing_volume.schema_name}/${resources.volumes.landing_volume.name}/orders

@@ -7,7 +7,9 @@
 
 ## Overview
 
-This document defines the standard naming convention for Unity Catalog catalogs and schemas when using Databricks Asset Bundles (DABs) for multi-environment deployment. It covers catalog naming, schema personalization, privilege grants, workspace binding, parameterization rules, and lifecycle management.
+This document defines the standard naming convention for Unity Catalog catalogs and schemas when using Declarative Automation Bundles (DABs, formerly Databricks Asset Bundles) for multi-environment deployment. It covers catalog naming, schema personalization, privilege grants, workspace binding, parameterization rules, and lifecycle management.
+
+For how these conventions are applied end to end in CI/CD -- targets, service principals, GitHub Actions, promotion, and rollback -- see [SDLC Best Practices on Databricks](../../sdlc-best-practices/docs/sdlc-best-practices-reference.md).
 
 This convention is designed to be referenced by Genie Code for contextual understanding of your environment topology.
 
