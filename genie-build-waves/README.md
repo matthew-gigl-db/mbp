@@ -215,6 +215,10 @@ Keep `rerun_dependent_tasks=True` in every case. Without it, nothing after the n
 
 A convergence wave can commit (its session passed) and still fail on `runtime_gate` (e.g. the app crashed during the soak). The commit is kept as progress; repair re-runs the converge session, which starts from the committed code.
 
+### Retarget after merge
+
+After a feature branch is merged to main and deleted on the remote, the build job's `branch` parameter still points at the deleted branch. The integrator will fail with `branch not found on remote`. To retarget: create a new feature branch, update `branch` in `waves.json`, re-deploy with `--var build_branch=<new>`, re-run setup, and start a new run.
+
 ## Changing a build
 
 * **Skill or prompt change**: Edit the `SKILL.md` in this repo, then re-run the setup job (it republishes the skills). On `dev`, deployments are source-linked, so setup reads `src/skills` straight from this repo. On other targets, setup reads the deployed copy, so run `bundle deploy` first.

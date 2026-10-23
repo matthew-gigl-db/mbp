@@ -40,6 +40,8 @@ Treat `converge` sessions exactly like `edit` sessions for file ownership, stray
 
 Determine: `workflow_mode` = `manifest.workflow.mode` or `"git"`.
 
+**Branch check (git/hybrid only, first wave only).** If this is the manifest's first wave and `workflow_mode` is `git` or `hybrid`, check that `branch` exists on the remote: `git ls-remote --heads origin <branch>` (via the Git CLI on `repo_root`). If the branch is not found on the remote, write a `fail` gate with `reason: "branch not found on remote — it may have been merged and deleted. Retarget the build to a new feature branch, update the manifest, re-deploy with --var build_branch=<new>, re-run setup, and start a new run."` and stop without committing.
+
 ### 2. Collect session results
 
 For each session, read `build_root/<status_dir>/<run_id>/<session_id>.json`. A missing file counts as `error` (the task crashed or never ran). A file with `status: "in_progress"` also counts as `error` (the session hit the turn limit or crashed before writing its final status). Build a table: session_id, mode, status, files_changed, assets_changed, failed/skipped checks, requests, blocking. For `converge` sessions also note the number of `attempts`, the last attempt's `result`, and every entry in `suppressions`.

@@ -113,3 +113,13 @@ A convergence wave can commit (its session passed) and still fail on `runtime_ga
 ---
 
 _This prompt is generic. Adapt the placeholders for your run ID, job ID, and wave number._
+
+## Retarget after merge
+
+After a feature branch is merged to main and deleted on the remote, the build job's `branch` parameter default still points at the deleted branch. The integrator will fail with `branch not found on remote` on the next run. To retarget:
+
+1. Create a new feature branch from main.
+2. Update `branch` in `waves.json` to the new branch name.
+3. Re-deploy the bundle with `--var="build_branch=<new-branch>"`.
+4. Re-run the setup job to patch the build job's parameter defaults.
+5. Start a new build run.
