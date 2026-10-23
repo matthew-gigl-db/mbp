@@ -4,6 +4,7 @@
 
 | Session | Summary |
 |---|---|
+| [gate-accuracy-improvements](2026-10-23_gate-accuracy-improvements.md) | Batch A from consumer feedback: dropped ELIFECYCLE from DEFAULT_ERROR_PATTERNS, added DEFAULT_IGNORE_PATTERNS for redeploy SIGTERM/ELIFECYCLE noise, tagged error samples with match reason (severity vs pattern), added JSON level error pattern for AppKit logs. Updated runner skill, manifest schema, converge example. |
 | [generic-prompt-examples](2026-10-23_generic-prompt-examples.md) | Removed project-specific `agenticTrading-follow-up-build.md`. Added three generic copy-paste prompt templates in `docs/prompts/`: `new-project.md` (initial build planning), `follow-up-build.md` (convergence waves after completed build), `repair-failed-wave.md` (re-starting from a failed wave with `repair_run` and fresh-run fallback). Updated README with a "Prompt examples" section linking to all three. |
 
 ## 2026-10-22
