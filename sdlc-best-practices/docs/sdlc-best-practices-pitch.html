@@ -213,9 +213,17 @@
       padding: 32px 0 0; margin-top: 56px; border-top: 1px solid var(--dbx-navy-700);
     }
     .product-strip .strip-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dbx-navy-500); white-space: nowrap; }
-    .product-strip .strip-logos { display: flex; align-items: center; gap: 32px; flex-wrap: wrap; }
-    .product-strip .strip-logos img { height: 30px; width: auto; opacity: 0.85; transition: opacity 0.2s ease, filter 0.2s ease; }
+    .product-strip .strip-logos { display: flex; align-items: center; gap: 20px 32px; flex-wrap: wrap; }
+    .product-strip .strip-logos img { height: 28px; width: auto; opacity: 0.85; transition: opacity 0.2s ease, filter 0.2s ease; }
     .product-strip .strip-logos img:hover { opacity: 1; filter: drop-shadow(0 0 8px rgba(255, 54, 33, 0.5)); }
+    /* Icon + wordmark for products whose lockup is not on the CDN (renamed products) */
+    .product-strip .strip-text {
+      display: inline-flex; align-items: center; gap: 8px; opacity: 0.85;
+      font-size: 19px; font-weight: 500; letter-spacing: -0.01em; color: var(--dbx-white); white-space: nowrap;
+      transition: opacity 0.2s ease, filter 0.2s ease;
+    }
+    .product-strip .strip-text:hover { opacity: 1; filter: drop-shadow(0 0 8px rgba(255, 54, 33, 0.5)); }
+    .product-strip .strip-text img, .product-strip .strip-text img:hover { opacity: 1; filter: none; }
 
     /* ── Architecture / flow diagrams ─────────────────────── */
     .arch-diagram {
@@ -531,11 +539,15 @@
       <div class="product-strip">
         <span class="strip-label">One bundle deploys</span>
         <div class="strip-logos">
-          <img src="https://cdn.bfldr.com/9AYANS2F/at/np65jmhvm6xfs8fzctvc4h/lakeflow-jobs-lockup-no-db-full-color-white.svg" alt="Lakeflow Jobs" title="Lakeflow Jobs">
-          <img src="https://cdn.bfldr.com/9AYANS2F/at/q7vqbv3b7hx9r52tcv2fgkhb/unity-catalog-lockup-no-db-full-color-white.svg" alt="Unity Catalog" title="Unity Catalog">
-          <img src="https://cdn.bfldr.com/9AYANS2F/at/gpbkh62csg3pq59b3xp3h8hp/apps-lockup-no-db-full-color-white.svg" alt="Databricks Apps" title="Apps">
-          <img src="https://cdn.bfldr.com/9AYANS2F/at/vp6c9wh4nh994r28bvsxx/notebooks-lockup-no-db-full-color-white-alt.svg" alt="Notebooks" title="Notebooks">
-          <img src="https://cdn.bfldr.com/9AYANS2F/at/2x894frtq656jgfnctc3wfxf/genie-code-lockup-no-db-full-color-white.svg" alt="Genie Code" title="Built with Genie Code">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/np65jmhvm6xfs8fzctvc4h/lakeflow-jobs-lockup-no-db-full-color-white.svg" alt="Lakeflow Jobs" title="Lakeflow Jobs — jobs, job runs">
+          <span class="strip-text" title="Lakeflow Spark Declarative Pipelines — pipelines"><img src="https://cdn.bfldr.com/9AYANS2F/at/rs5kcb74q92f6mqgr6v8rjm/primary-icon-lakeflow-pipelines-white.svg" alt="">Spark Declarative Pipelines</span>
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/q7vqbv3b7hx9r52tcv2fgkhb/unity-catalog-lockup-no-db-full-color-white.svg" alt="Unity Catalog" title="Unity Catalog — catalogs, schemas, volumes, grants">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/cn853gxm9ctc4jgxp5vjp6q/lakebase-lockup-no-db-full-color-white.svg" alt="Lakebase" title="Lakebase — projects, branches, endpoints">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/gpbkh62csg3pq59b3xp3h8hp/apps-lockup-no-db-full-color-white.svg" alt="Databricks Apps" title="Databricks Apps">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/fhp35sw9t45s7ft54hnbn3/ai-bi-dashboards-lockup-no-db-full-color-white.svg" alt="AI/BI Dashboards" title="AI/BI Dashboards">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/rv3kt32ng3rwwpvh26xkfkj3/genie-lockup-no-db-full-color-white.svg" alt="Genie Agents" title="Genie Agents">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/7kt66pxs5tj9fkf8kkzg393/mosaic-ai-lockup-no-db-full-color-white.svg" alt="Mosaic AI" title="Mosaic AI — model serving endpoints, registered models, experiments">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/vp6c9wh4nh994r28bvsxx/notebooks-lockup-no-db-full-color-white-alt.svg" alt="Notebooks" title="Notebooks and source files">
         </div>
       </div>
     </div>
