@@ -1,0 +1,3 @@
+.databricks/
+# Local test manifests for live checks (not synced or committed)
+.scratch/

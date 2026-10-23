@@ -1,0 +1,30 @@
+# resources/build_waves_smoke.job.yml
+# Smoke test: a 2-item for_each of a no-op Genie Code task.
+# The setup notebook injects a random nonce into the inputs. If the agent
+# echoes the correct nonce, we know {{input.*}} resolved in genie_task.parameters.
+# Patched into genie_tasks by the setup job (run with run_smoke=true to patch + run).
+# Setup also adds capability_probe (Genie Code, read-only) and app_probe_check
+# (notebook: authenticated app probes as the job's run-as identity).
+
+resources:
+  jobs:
+    build_waves_smoke:
+      name: "${var.project_name}: Build Waves Smoke Test"
+      description: "Smoke test: Genie Code task inside for_each, verifying input values reach the prompt."
+      max_concurrent_runs: 1
+      tags:
+        purpose: build-waves-smoke
+        managed_by: genie-build-waves
+      tasks:
+        - task_key: smoke_sessions
+          for_each_task:
+            inputs: '[{"session_id": "A", "nonce": "SETUP_PATCHES_THIS"}, {"session_id": "B", "nonce": "SETUP_PATCHES_THIS"}]'
+            concurrency: 2
+            task:
+              task_key: smoke_session
+              notebook_task:
+                notebook_path: ../src/notebooks/genie_task_placeholder.ipynb
+                base_parameters:
+                  automation: smoke
+                  session_id: "{{input.session_id}}"
+                  nonce: "{{input.nonce}}"

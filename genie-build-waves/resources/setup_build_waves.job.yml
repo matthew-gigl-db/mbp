@@ -1,0 +1,36 @@
+# resources/setup_build_waves.job.yml
+# Patcher for the Genie Code build jobs. Run after EVERY bundle deploy (deploy restores
+# the notebook_task placeholders). Publishes UC Skills, creates automations, generates
+# the full task graph from waves.json, and resets the build + smoke jobs.
+
+resources:
+  jobs:
+    setup_build_waves:
+      name: "${var.project_name}: Build Waves Setup"
+      description: "Publishes build skills, creates automations, and patches jobs. Run after every bundle deploy."
+      max_concurrent_runs: 1
+      tags:
+        purpose: build-waves
+        managed_by: genie-build-waves
+      parameters:
+        - name: run_smoke
+          default: "false"
+      tasks:
+        - task_key: setup
+          notebook_task:
+            notebook_path: ../src/notebooks/setup_build_waves_job.ipynb
+            base_parameters:
+              build_root: ${var.build_root}
+              manifest_path: ${var.manifest_path}
+              skills_dir: ${workspace.file_path}/src/skills
+              skills_catalog: ${var.skills_catalog}
+              skills_schema: ${var.skills_schema}
+              runner_skill_id: ${var.runner_skill_id}
+              integrator_skill_id: ${var.integrator_skill_id}
+              build_job_id: ${resources.jobs.build_waves.id}
+              smoke_job_id: ${resources.jobs.build_waves_smoke.id}
+              gate_notebook_path: ${workspace.file_path}/src/notebooks/wave_gate_check.ipynb
+              probe_notebook_path: ${workspace.file_path}/src/notebooks/app_probe_check.ipynb
+              placeholder_path: ${workspace.file_path}/src/notebooks/genie_task_placeholder.ipynb
+              create_skills_schema: ${var.create_skills_schema}
+              run_smoke: "{{job.parameters.run_smoke}}"
