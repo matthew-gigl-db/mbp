@@ -1,5 +1,11 @@
 # Session Summaries — genie-build-waves
 
+## 2026-10-23
+
+| Session | Summary |
+|---|---|
+| [generic-prompt-examples](2026-10-23_generic-prompt-examples.md) | Removed project-specific `agenticTrading-follow-up-build.md`. Added three generic copy-paste prompt templates in `docs/prompts/`: `new-project.md` (initial build planning), `follow-up-build.md` (convergence waves after completed build), `repair-failed-wave.md` (re-starting from a failed wave with `repair_run` and fresh-run fallback). Updated README with a "Prompt examples" section linking to all three. |
+
 ## 2026-10-22
 
 | Session | Summary |

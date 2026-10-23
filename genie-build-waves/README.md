@@ -101,6 +101,16 @@ The full planning guide lives at `src/skills/genie-build-planner/SKILL.md` in th
 * Plan file format and conventions
 * Manifest and bundle configuration
 
+## Prompt examples
+
+Copy-paste prompts for the three most common Genie Code sessions:
+
+* **New project** — Kick off an initial build: [docs/prompts/new-project.md](docs/prompts/new-project.md)
+* **Follow-up build** — After the initial build completes, append convergence waves that deploy, read telemetry, and iterate until stable: [docs/prompts/follow-up-build.md](docs/prompts/follow-up-build.md)
+* **Repair a failed wave** — Re-start the build from a specific wave's sessions, integrator, or gate step: [docs/prompts/repair-failed-wave.md](docs/prompts/repair-failed-wave.md)
+
+Each prompt has bracketed placeholders for paths, names, and IDs. Replace them with your project's values before pasting into Genie Code.
+
 ## Quick start (manual)
 
 ### 1. Prepare your project
