@@ -9,6 +9,7 @@ A deep dive into the software development lifecycle on Databricks with **Declara
 | [SDLC Best Practices Reference](docs/sdlc-best-practices-reference.md) | Principles, bundle deep dive (engine, targets, presets, variables, identity, data protection, plans), testing, promotion, rollback, checklist |
 | [Deployment Complexity Comparison](docs/deployment-complexity-comparison.md) | The same deployment as a bundle, in Terraform, and on the raw REST API -- what each costs to own |
 | [GitHub Actions Setup Guide](docs/github-actions-setup.md) | Service principals, GitHub environments, OIDC federation policies, branch protection, troubleshooting |
+| [SDLC on Databricks presentation](docs/sdlc-best-practices-pitch.html) | Databricks-branded, single-file HTML deck for customer sessions: lifecycle, bundle deep dive, why bundles vs Terraform/REST, tagging for cost allocation, GitHub Actions, Genie Code in the bundle editor, adoption path. Open in a browser |
 
 ## Examples
 
