@@ -42,7 +42,9 @@ Determine: `workflow_mode` = `manifest.workflow.mode` or `"git"`.
 
 ### 2. Collect session results
 
-For each session, read `build_root/<status_dir>/<run_id>/<session_id>.json`. A missing file counts as `error` (the task crashed or never ran). Build a table: session_id, mode, status, files_changed, assets_changed, failed/skipped checks, requests, blocking. For `converge` sessions also note the number of `attempts`, the last attempt's `result`, and every entry in `suppressions`.
+For each session, read `build_root/<status_dir>/<run_id>/<session_id>.json`. A missing file counts as `error` (the task crashed or never ran). A file with `status: "in_progress"` also counts as `error` (the session hit the turn limit or crashed before writing its final status). Build a table: session_id, mode, status, files_changed, assets_changed, failed/skipped checks, requests, blocking. For `converge` sessions also note the number of `attempts`, the last attempt's `result`, and every entry in `suppressions`.
+
+**Incomplete session file credit.** When a session's status is `error` because its file is missing or `in_progress`, scan the working tree for files under its `owned_paths` (and not its `exclude_paths`). If any exist, add them to that session's `files_changed` in your table and note `reason: "incomplete session file credit"`. This prevents the stray detector from flagging code a partially-complete session left behind. The session still fails the gate (its status is `error`), so the repair run re-executes it.
 
 A `converge` session whose `files_changed` is not the union of its attempts' `files_changed`, or whose last attempt is not `stable` while `status` is `pass`, is inconsistent: treat it as `fail`.
 
@@ -58,7 +60,7 @@ Otherwise, use Git status (read-only) on `repo_root`. Every changed or untracked
 - under `status_dir` (never staged), or
 - **carryover** left by an earlier run (see below).
 
-Anything else is a **stray**. Do not stage strays; list them in the gate file. Strays fail the gate. If a file is in a session's `files_changed` but outside its `owned_paths`, treat it as a stray too.
+Anything else is a **stray**. Do not stage strays; list them in the gate file. Strays fail the gate. If a file is in a session's `files_changed` but outside its `owned_paths`, treat it as a stray too. Files credited to an incomplete session (step 2, "incomplete session file credit") are not strays.
 
 **Carryover.** Failed or interrupted runs leave files behind: summaries an integrator never committed (it crashed or never started), and code from non-passing sessions that step 6 deliberately leaves uncommitted. A fresh run (new `run_id`) must not mistake these for strays. Classify a file that is not claimed by this run as carryover when one of these holds, checked in this order:
 1. `summary`: it is under `sessions_dir` and is named like a runner summary (`<YYYY-MM-DD>_w<wave>-<session_id>-<slug>.md`) for a session that exists in the manifest, or it is named as a summary in a status file under `status_dir/<other_run_id>/`.

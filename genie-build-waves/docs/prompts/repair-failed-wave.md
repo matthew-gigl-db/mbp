@@ -64,6 +64,21 @@ In the UI: choose **Repair run** and select the failed wave's tasks **and** ever
 
 Keep `rerun_dependent_tasks=True` in every case. Without it, nothing after the named tasks runs.
 
+**Pass `job_parameters` on every repair.** A `repair_run` falls back to the job-level parameter defaults when `job_parameters` is omitted. The setup job writes these defaults from the manifest, but if the original run was started with custom parameters (e.g. a different branch), the repair would silently use the wrong values. Always pass the same `branch`, `build_root`, and `manifest_path` the original run used:
+
+```python
+w.jobs.repair_run(
+    run_id=[run_id],
+    rerun_tasks=[...],
+    rerun_dependent_tasks=True,
+    job_parameters={
+        "branch": "[feature-branch]",
+        "build_root": "[build_root]",
+        "manifest_path": "[manifest_path]",
+    },
+)
+```
+
 ### Step 3: Fresh run fallback
 
 If the build job was redeployed and re-patched since the failed run, Jobs refuses to repair it ("job structure has changed"). Start a new run with `only` set to the failed wave's task keys and everything after it:

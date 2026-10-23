@@ -207,6 +207,8 @@ Which tasks to name in `rerun_tasks`:
 
 Keep `rerun_dependent_tasks=True` in every case. Without it, nothing after the named tasks runs.
 
+**Pass `job_parameters` on every repair.** A `repair_run` falls back to the job-level parameter defaults when `job_parameters` is omitted. The setup job writes these defaults from the manifest, but if the original run was started with custom parameters (e.g. a different branch), the repair would silently use the wrong values. Always pass `branch`, `build_root`, and `manifest_path`.
+
 **Transient agent start-up errors** (`INTERNAL_ERROR: start_agent_run`) are retried automatically: Genie Code tasks get `max_retries` (default 2, one minute apart, override with manifest `task_retries`). If a task still fails after its retries, repair as above; don't start a fresh run.
 
 **Fresh runs.** If the build job was redeployed and re-patched since the failed run, Jobs refuses to repair it ("job structure has changed"). Start a new run with `only` set to the failed wave's task keys and everything after it (earlier waves show as skipped). Files left in the working tree by the earlier run (uncommitted summaries, code from failed sessions) are reported by the integrator as `carryover_files`, not strays, so they no longer fail the new run's first gate. Summary carryover is committed; code carryover is left for the session that owns it. The last wave fails on any carryover code nobody claimed, so a human decides what to do with it.

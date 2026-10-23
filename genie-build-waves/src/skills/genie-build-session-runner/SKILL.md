@@ -89,6 +89,8 @@ If the session has `context_notes`, treat them as a hand-over from an interactiv
 
 ### 4. Do the work
 
+**Write a provisional status file first.** Before any work, write `build_root/<status_dir>/<run_id>/<session_id>.json` with `status: "in_progress"` and empty arrays for `files_changed`, `assets_changed`, `checks`, `assumptions`, `requests`. This ensures the integrator can attribute files under your `owned_paths` to your session even if you run out of turns before writing the final status file (step 7). Update this file after each converge attempt (for `converge` mode) or after completing all tasks (for other modes), then replace it with the final version in step 7.
+
 Based on your `session_mode`:
 
 **`edit` mode:**
