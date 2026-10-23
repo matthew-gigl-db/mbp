@@ -1,0 +1,31 @@
+# Unity Catalog schema for the orders data product.
+# Every other resource references this one through ${resources.schemas.orders_schema.*}
+# (never ${var.schema_name} directly) so the schema is always created first and
+# dev-mode / ci name prefixes flow through to every consumer automatically.
+resources:
+  schemas:
+    orders_schema:
+      catalog_name: ${var.catalog}
+      name: ${var.schema_name}
+      comment: Orders medallion data product (bronze, silver, gold). Managed by Declarative Automation Bundles.
+      grants:
+        # Group names are account-level groups. For a service principal, use its
+        # application ID (UUID), never its display name.
+        #
+        # The deploy service principal creates (and owns) the schema; the separate run-as
+        # service principal only gets what the pipeline and quality gate need.
+        - principal: ${var.workload_principal}
+          privileges:
+            - USE_SCHEMA
+            - CREATE_TABLE
+            - CREATE_MATERIALIZED_VIEW
+            - SELECT
+            - MODIFY
+        - principal: ${var.engineers_group}
+          privileges:
+            - USE_SCHEMA
+            - SELECT
+        - principal: ${var.consumers_group}
+          privileges:
+            - USE_SCHEMA
+            - SELECT

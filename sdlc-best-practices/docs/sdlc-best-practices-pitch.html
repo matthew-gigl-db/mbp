@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ship Data Products Like Software — SDLC on Databricks with Declarative Automation Bundles</title>
+  <meta name="description" content="SDLC best practices on Databricks: Declarative Automation Bundles, environment isolation, tagging for cost allocation, CI/CD with GitHub Actions, and building bundles with Genie Code.">
+  <link rel="icon" type="image/svg+xml" href="https://cdn.bfldr.com/9AYANS2F/at/b87x34rfnrgcfjvg93pt83x/databricks-symbol-light.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400;1,9..40,500;1,9..40,700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap" rel="stylesheet">
+  <style>
+    /* ── Databricks Brand CSS Custom Properties ────────────── */
+    :root {
+      color-scheme: light dark;
+
+      --dbx-lava-600: #FF3621;
+      --dbx-lava-700: #BD2B26;
+      --dbx-lava-500: #FF5F46;
+      --dbx-lava-300: #FABFBA;
+      --dbx-navy-800: #1B3139;
+      --dbx-navy-900: #0B2026;
+      --dbx-navy-700: #143D4A;
+      --dbx-navy-600: #1B5162;
+      --dbx-navy-500: #618794;
+      --dbx-navy-400: #90A5B1;
+      --dbx-navy-300: #C4CCD6;
+      --dbx-oat-medium: #EEEDE9;
+      --dbx-oat-light: #F9F7F4;
+      --dbx-white: #FFFFFF;
+
+      --dbx-gray-nav: #303F47;
+      --dbx-gray-text: #5A6F77;
+      --dbx-gray-lines: #DCE0E2;
+
+      --dbx-green-600: #00A972;
+      --dbx-green-700: #00875C;
+      --dbx-green-300: #9ED6C4;
+      --dbx-yellow-600: #FFAB00;
+      --dbx-yellow-500: #FCBA33;
+      --dbx-yellow-300: #FFDB96;
+      --dbx-blue-600: #2272B4;
+      --dbx-blue-400: #8ACAFF;
+      --dbx-blue-300: #BAE1FC;
+
+      /* Semantic tokens — light mode defaults */
+      --surface-primary: var(--dbx-white);
+      --surface-secondary: var(--dbx-oat-light);
+      --surface-tertiary: var(--dbx-oat-medium);
+      --surface-nav: var(--dbx-oat-light);
+      --text-primary: var(--dbx-navy-800);
+      --text-secondary: var(--dbx-gray-text);
+      --text-tertiary: var(--dbx-navy-500);
+      --text-on-accent: var(--dbx-white);
+      --border-default: var(--dbx-gray-lines);
+      --border-subtle: var(--dbx-oat-medium);
+      --accent-primary: var(--dbx-lava-600);
+      --accent-primary-hover: var(--dbx-lava-700);
+      --accent-success: var(--dbx-green-700);
+      --accent-warning: #BA7B23;
+      --accent-info: var(--dbx-blue-600);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --surface-primary: var(--dbx-navy-800);
+        --surface-secondary: var(--dbx-navy-900);
+        --surface-tertiary: var(--dbx-navy-700);
+        --surface-nav: var(--dbx-gray-nav);
+        --text-primary: var(--dbx-white);
+        --text-secondary: var(--dbx-navy-400);
+        --text-tertiary: var(--dbx-navy-500);
+        --border-default: var(--dbx-navy-600);
+        --border-subtle: var(--dbx-navy-700);
+        --accent-primary: var(--dbx-lava-500);
+        --accent-primary-hover: var(--dbx-lava-600);
+        --accent-success: var(--dbx-green-600);
+        --accent-warning: var(--dbx-yellow-600);
+        --accent-info: var(--dbx-blue-400);
+      }
+    }
+
+    /* ── Reset & Base ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+    body {
+      font-family: "DM Sans", "Inter", system-ui, -apple-system, sans-serif;
+      background-color: var(--surface-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    code, pre, .mono { font-family: "DM Mono", "JetBrains Mono", "Fira Code", monospace; }
+    p code, li code, td code, span code {
+      font-size: 0.9em; padding: 1px 6px; border-radius: 4px;
+      background: var(--surface-tertiary); color: var(--text-primary);
+    }
+    a { color: var(--accent-info); }
+    :focus-visible { outline: 2px solid var(--dbx-lava-600); outline-offset: 2px; border-radius: 4px; }
+
+    /* ── Layout ───────────────────────────────────────────── */
+    .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+    section { padding: 80px 0; }
+    section + section { border-top: 1px solid var(--border-default); }
+    section.alt { background: var(--surface-secondary); }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+    .mt-24 { margin-top: 24px; } .mt-32 { margin-top: 32px; } .mt-48 { margin-top: 48px; }
+
+    /* ── Sticky section nav ───────────────────────────────── */
+    .topnav {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(11, 32, 38, 0.92);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--dbx-navy-700);
+    }
+    .topnav .container { display: flex; align-items: center; gap: 24px; height: 56px; }
+    .topnav .nav-logo { height: 22px; flex-shrink: 0; }
+    .topnav .nav-links { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+    .topnav .nav-links::-webkit-scrollbar { display: none; }
+    .topnav .nav-links a {
+      color: var(--dbx-navy-300); text-decoration: none; white-space: nowrap;
+      font-size: 13px; font-weight: 500; padding: 6px 10px; border-radius: 6px;
+      transition: color 0.2s ease, background 0.2s ease;
+    }
+    .topnav .nav-links a:hover, .topnav .nav-links a.active { color: var(--dbx-white); background: rgba(255, 255, 255, 0.08); }
+    .topnav .nav-links a.active { box-shadow: inset 0 -2px 0 var(--dbx-lava-600); }
+
+    /* ── Typography ───────────────────────────────────────── */
+    h1 { font-size: 56px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
+    h2 { font-size: 40px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; margin-bottom: 16px; }
+    h3 { font-size: 24px; font-weight: 700; line-height: 1.3; margin-bottom: 12px; }
+    h4 { font-size: 18px; font-weight: 700; line-height: 1.3; margin-bottom: 8px; }
+    p { font-size: 16px; line-height: 1.55; color: var(--text-secondary); max-width: 72ch; }
+    p + p { margin-top: 16px; }
+    strong { color: var(--text-primary); font-weight: 700; }
+    .eyebrow {
+      font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--accent-primary); margin-bottom: 8px; display: inline-block;
+    }
+    .lead { font-size: 20px; line-height: 1.5; color: var(--text-secondary); max-width: 74ch; }
+    .hl { color: var(--accent-primary); }
+
+    /* ── Hero ─────────────────────────────────────────────── */
+    .hero {
+      background: var(--dbx-navy-800); color: var(--dbx-white);
+      padding: 64px 0 96px; position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ""; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 70% 0%, rgba(255, 54, 33, 0.14), transparent);
+      pointer-events: none;
+    }
+    .hero .container { position: relative; z-index: 1; }
+    .hero-logo { height: 40px; margin-bottom: 48px; }
+    .hero-logo img { height: 100%; width: auto; }
+    .hero h1 { color: var(--dbx-white); margin-bottom: 24px; max-width: 18ch; }
+    .hero .lead { color: var(--dbx-navy-300); margin-bottom: 40px; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 100px;
+      background: rgba(255, 54, 33, 0.15); border: 1px solid rgba(255, 54, 33, 0.3);
+      font-size: 12px; font-weight: 500; color: var(--dbx-lava-500); margin-bottom: 32px;
+    }
+    .hero-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dbx-lava-500); animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.85); } }
+    .hero-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; }
+    .cta-group { display: flex; gap: 16px; flex-wrap: wrap; }
+
+    /* ── Buttons ──────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; border-radius: 8px;
+      font-family: "DM Sans", sans-serif; font-size: 16px; font-weight: 500; text-decoration: none;
+      border: none; cursor: pointer; transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    }
+    .btn-primary { background: var(--dbx-lava-600); color: var(--dbx-white); }
+    .btn-primary:hover { background: var(--dbx-lava-700); box-shadow: 0 0 20px rgba(255, 54, 33, 0.45); }
+    .btn-secondary { background: transparent; color: var(--dbx-white); border: 1px solid var(--dbx-navy-400); }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--dbx-white); }
+    .btn .arrow { transition: transform 0.2s ease; }
+    .btn:hover .arrow { transform: translateX(4px); }
+
+    /* ── Terminal (hero animation) ────────────────────────── */
+    .terminal {
+      background: var(--dbx-navy-900); border: 1px solid var(--dbx-navy-700); border-radius: 14px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35); overflow: hidden;
+    }
+    .term-head {
+      display: flex; align-items: center; gap: 8px; padding: 12px 16px;
+      border-bottom: 1px solid var(--dbx-navy-700); background: rgba(27, 49, 57, 0.6);
+    }
+    .term-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dbx-navy-600); }
+    .term-title { margin-left: 8px; font-family: "DM Mono", monospace; font-size: 12px; color: var(--dbx-navy-400); }
+    .term-target {
+      margin-left: auto; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 2px 8px; border-radius: 100px; background: rgba(255, 54, 33, 0.15); color: var(--dbx-lava-500);
+    }
+    .term-body {
+      height: 360px; padding: 18px 20px; overflow: hidden;
+      font-family: "DM Mono", monospace; font-size: 12.5px; line-height: 1.7; color: var(--dbx-navy-300);
+    }
+    .term-line { opacity: 0; transform: translateY(4px); transition: opacity 180ms ease, transform 180ms ease; white-space: pre-wrap; }
+    .term-line.in { opacity: 1; transform: none; }
+    .t-prompt { color: var(--dbx-lava-500); }
+    .t-cmd { color: var(--dbx-white); }
+    .t-ok { color: var(--dbx-green-600); }
+    .t-dim { color: var(--dbx-navy-500); }
+    .t-warn { color: var(--dbx-yellow-600); }
+    .t-info { color: var(--dbx-blue-400); }
+
+    /* ── Product Logo Strip ───────────────────────────────── */
+    .product-strip {
+      display: flex; align-items: center; gap: 40px; flex-wrap: wrap;
+      padding: 32px 0 0; margin-top: 56px; border-top: 1px solid var(--dbx-navy-700);
+    }
+    .product-strip .strip-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dbx-navy-500); white-space: nowrap; }
+    .product-strip .strip-logos { display: flex; align-items: center; gap: 20px 32px; flex-wrap: wrap; }
+    .product-strip .strip-logos img { height: 28px; width: auto; opacity: 0.85; transition: opacity 0.2s ease, filter 0.2s ease; }
+    .product-strip .strip-logos img:hover { opacity: 1; filter: drop-shadow(0 0 8px rgba(255, 54, 33, 0.5)); }
+    /* Icon + wordmark for products whose lockup is not on the CDN (renamed products) */
+    .product-strip .strip-text {
+      display: inline-flex; align-items: center; gap: 8px; opacity: 0.85;
+      font-size: 19px; font-weight: 500; letter-spacing: -0.01em; color: var(--dbx-white); white-space: nowrap;
+      transition: opacity 0.2s ease, filter 0.2s ease;
+    }
+    .product-strip .strip-text:hover { opacity: 1; filter: drop-shadow(0 0 8px rgba(255, 54, 33, 0.5)); }
+    .product-strip .strip-text img, .product-strip .strip-text img:hover { opacity: 1; filter: none; }
+
+    /* ── Architecture / flow diagrams ─────────────────────── */
+    .arch-diagram {
+      background: var(--dbx-navy-900); border-radius: 16px; padding: 40px; margin: 32px 0;
+      border: 1px solid var(--dbx-navy-700); overflow-x: auto; color: var(--dbx-navy-300);
+    }
+    .arch-title { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dbx-navy-400); margin-bottom: 24px; text-align: center; }
+    .arch-box {
+      background: var(--dbx-navy-700); border: 1px solid var(--dbx-navy-600); border-radius: 10px;
+      padding: 14px 16px; text-align: center; min-width: 140px; position: relative;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .arch-box:hover { box-shadow: 0 0 16px rgba(255, 54, 33, 0.18); }
+    .arch-box.accent-lava { border-color: var(--dbx-lava-600); background: rgba(255, 54, 33, 0.08); }
+    .arch-box.accent-blue { border-color: var(--dbx-blue-600); background: rgba(34, 114, 180, 0.08); }
+    .arch-box.accent-green { border-color: var(--dbx-green-600); background: rgba(0, 169, 114, 0.08); }
+    .arch-box.accent-yellow { border-color: var(--dbx-yellow-600); background: rgba(255, 171, 0, 0.08); }
+    .box-title { font-size: 14px; font-weight: 700; color: var(--dbx-white); margin-bottom: 4px; }
+    .box-sub { font-size: 11px; color: var(--dbx-navy-400); font-family: "DM Mono", monospace; line-height: 1.45; }
+    .box-tag {
+      display: inline-block; padding: 2px 8px; border-radius: 100px; font-size: 10px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.06em; margin-top: 8px; font-family: "DM Sans", sans-serif;
+    }
+    .box-tag-lava { background: rgba(255, 54, 33, 0.2); color: var(--dbx-lava-500); }
+    .box-tag-blue { background: rgba(34, 114, 180, 0.2); color: var(--dbx-blue-400); }
+    .box-tag-green { background: rgba(0, 169, 114, 0.2); color: var(--dbx-green-600); }
+    .box-tag-yellow { background: rgba(255, 171, 0, 0.2); color: var(--dbx-yellow-600); }
+    .box-logo { height: 28px; width: auto; margin: 0 auto 8px; display: block; opacity: 0.9; }
+    .flow-row { display: flex; align-items: stretch; justify-content: center; gap: 0; flex-wrap: nowrap; min-width: 900px; }
+    .flow-row .arch-box { flex: 1; min-width: 0; }
+    .flow-arrow {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 0 8px; color: var(--dbx-navy-500); font-size: 18px; min-width: 64px;
+    }
+    .flow-arrow span { font-family: "DM Mono", monospace; font-size: 10px; color: var(--dbx-navy-400); text-align: center; margin-top: 4px; line-height: 1.3; }
+    .arch-legend { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--dbx-navy-700); }
+    .arch-legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--dbx-navy-400); }
+    .arch-legend-dot { width: 12px; height: 12px; border-radius: 4px; border: 1px solid; }
+    .legend-lava { border-color: var(--dbx-lava-600); background: rgba(255, 54, 33, 0.15); }
+    .legend-blue { border-color: var(--dbx-blue-600); background: rgba(34, 114, 180, 0.15); }
+    .legend-green { border-color: var(--dbx-green-600); background: rgba(0, 169, 114, 0.15); }
+    .legend-yellow { border-color: var(--dbx-yellow-600); background: rgba(255, 171, 0, 0.15); }
+    .gate-row { display: flex; justify-content: center; gap: 0; min-width: 900px; margin-top: 16px; }
+    .gate-row > div { flex: 1; text-align: center; font-size: 11px; color: var(--dbx-navy-400); font-family: "DM Mono", monospace; padding: 0 6px; }
+    .gate-row > .gap { flex: 0 0 64px; }
+
+    /* Layer stack (tool ownership) */
+    .layer-stack { display: flex; flex-direction: column; gap: 10px; }
+    .layer {
+      display: grid; grid-template-columns: 200px 1fr 160px; gap: 16px; align-items: center;
+      padding: 16px 20px; border-radius: 10px; border: 1px solid var(--dbx-navy-600); background: var(--dbx-navy-700);
+    }
+    .layer .l-tool { font-weight: 700; color: var(--dbx-white); font-size: 15px; }
+    .layer .l-what { font-size: 13px; color: var(--dbx-navy-300); }
+    .layer .l-owner { font-size: 11px; font-family: "DM Mono", monospace; color: var(--dbx-navy-400); text-align: right; }
+    .layer.dab { border-color: var(--dbx-lava-600); background: rgba(255, 54, 33, 0.1); box-shadow: 0 0 24px rgba(255, 54, 33, 0.12); }
+
+    /* ── Cards ────────────────────────────────────────────── */
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+    .card-grid.tight { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .card {
+      background: var(--surface-tertiary); border: 1px solid var(--border-default); border-radius: 16px; padding: 28px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card:hover { border-color: var(--accent-primary); box-shadow: 0 4px 24px rgba(255, 54, 33, 0.08); }
+    .card .card-icon-img { width: 52px; height: 52px; margin-bottom: 16px; display: block; transition: filter 0.2s ease, transform 0.2s ease; }
+    .card:hover .card-icon-img { filter: drop-shadow(0 0 8px rgba(255, 54, 33, 0.55)); transform: scale(1.04); }
+    .card h3 { font-size: 20px; margin-bottom: 8px; }
+    .card p { font-size: 14px; line-height: 1.6; }
+    .card .tag {
+      display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.06em; margin-top: 16px;
+    }
+    .tag-green { background: rgba(0, 169, 114, 0.15); color: var(--accent-success); }
+    .tag-blue { background: rgba(34, 114, 180, 0.15); color: var(--accent-info); }
+    .tag-yellow { background: rgba(255, 171, 0, 0.15); color: var(--accent-warning); }
+    .tag-lava { background: rgba(255, 54, 33, 0.12); color: var(--accent-primary); }
+
+    /* ── Feature List ─────────────────────────────────────── */
+    .feature-list { list-style: none; padding: 0; }
+    .feature-list li { display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border-subtle); }
+    .feature-list li:last-child { border-bottom: none; }
+    .feature-list .check {
+      flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-success); color: var(--dbx-white);
+      display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; margin-top: 2px;
+    }
+    .feature-list .check.x { background: var(--accent-primary); }
+    .feature-list .text { flex: 1; }
+    .feature-list .text strong { display: block; margin-bottom: 2px; }
+    .feature-list .text span { font-size: 14px; color: var(--text-secondary); }
+
+    /* ── Table ────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; }
+    .styled-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 24px; }
+    .styled-table th {
+      text-align: left; padding: 12px 16px; font-weight: 500; font-size: 12px; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text-tertiary); border-bottom: 2px solid var(--border-default);
+    }
+    .styled-table td { padding: 13px 16px; border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); vertical-align: top; }
+    .styled-table td strong { color: var(--text-primary); }
+    .styled-table tr:hover td { background: var(--surface-secondary); }
+    .styled-table th.dab, .styled-table td.dab { background: rgba(255, 54, 33, 0.05); }
+    .styled-table th.dab { color: var(--accent-primary); }
+    .yes { color: var(--accent-success); font-weight: 700; }
+    .no { color: var(--accent-primary); font-weight: 700; }
+    .meh { color: var(--accent-warning); font-weight: 700; }
+
+    /* ── Code Block ───────────────────────────────────────── */
+    .code-block {
+      background: var(--dbx-navy-900); border-radius: 12px; padding: 20px 24px; margin: 16px 0;
+      overflow-x: auto; border: 1px solid var(--dbx-navy-700); position: relative;
+    }
+    .code-block .code-label {
+      position: absolute; top: 10px; right: 14px; font-size: 10px; font-weight: 500; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--dbx-navy-500); font-family: "DM Sans", sans-serif;
+    }
+    .code-block pre { font-family: "DM Mono", monospace; font-size: 12.5px; line-height: 1.65; color: var(--dbx-navy-300); }
+    .code-block .c { color: var(--dbx-navy-500); }
+    .code-block .k { color: var(--dbx-lava-500); }
+    .code-block .s { color: var(--dbx-green-600); }
+    .code-block .v { color: var(--dbx-yellow-600); }
+    .code-block .b { color: var(--dbx-blue-400); }
+
+    /* ── Callout ──────────────────────────────────────────── */
+    .callout {
+      background: var(--surface-secondary); border-left: 4px solid var(--accent-primary);
+      border-radius: 0 12px 12px 0; padding: 22px 28px; margin: 32px 0;
+    }
+    section.alt .callout { background: var(--surface-primary); }
+    .callout .callout-label { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-primary); margin-bottom: 8px; }
+    .callout p { font-size: 15px; }
+
+    /* ── Numbered best-practice list ──────────────────────── */
+    .bp-list { counter-reset: bp; list-style: none; padding: 0; }
+    .bp-list > li { counter-increment: bp; padding: 22px 0 22px 64px; border-bottom: 1px solid var(--border-subtle); position: relative; }
+    .bp-list > li:last-child { border-bottom: none; }
+    .bp-list > li::before {
+      content: counter(bp); position: absolute; left: 0; top: 22px; width: 40px; height: 40px; border-radius: 50%;
+      background: var(--accent-primary); color: var(--dbx-white); display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700;
+    }
+    .bp-list li h3 { font-size: 20px; margin-bottom: 6px; }
+    .bp-list li p { font-size: 15px; }
+
+    /* ── Stats Row ────────────────────────────────────────── */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin: 40px 0; }
+    .stat { text-align: center; padding: 20px; }
+    .stat .stat-value { font-size: 48px; font-weight: 700; color: var(--accent-primary); line-height: 1; }
+    .stat .stat-label { font-size: 13px; color: var(--text-secondary); margin-top: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* ── Comparison bars ──────────────────────────────────── */
+    .bars { display: flex; flex-direction: column; gap: 22px; margin-top: 24px; }
+    .bar-group h4 { font-size: 14px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .bar { display: grid; grid-template-columns: 110px 1fr 170px; gap: 12px; align-items: center; margin-bottom: 6px; font-size: 13px; }
+    .bar .lbl { color: var(--text-primary); font-weight: 500; }
+    .bar .track { height: 14px; border-radius: 7px; background: var(--surface-tertiary); overflow: hidden; }
+    .bar .fill {
+      display: block; height: 100%; border-radius: 7px; background: var(--dbx-navy-500);
+      transform-origin: left; transform: scaleX(0); transition: transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .bar .fill.dab { background: linear-gradient(90deg, var(--dbx-lava-600), var(--dbx-lava-500)); }
+    .bars.in .fill { transform: scaleX(var(--w)); }
+    .bar .val { font-family: "DM Mono", monospace; font-size: 12px; color: var(--text-secondary); }
+
+    /* ── Tag chips ────────────────────────────────────────── */
+    .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 8px;
+      border: 1px solid var(--border-default); background: var(--surface-primary);
+      font-family: "DM Mono", monospace; font-size: 12.5px; color: var(--text-primary);
+    }
+    .chip b { color: var(--accent-primary); font-weight: 500; }
+    .chip i { font-style: normal; color: var(--text-secondary); }
+
+    /* ── Genie Code bundle editor mock ────────────────────── */
+    .editor-mock {
+      display: grid; grid-template-columns: 220px 1fr 340px; min-height: 460px;
+      background: var(--dbx-navy-900); border: 1px solid var(--dbx-navy-700); border-radius: 14px;
+      overflow: hidden; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25); color: var(--dbx-navy-300); margin-top: 32px;
+    }
+    .em-pane { border-right: 1px solid var(--dbx-navy-700); display: flex; flex-direction: column; min-width: 0; }
+    .em-pane:last-child { border-right: none; }
+    .em-head {
+      padding: 10px 14px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--dbx-navy-400); border-bottom: 1px solid var(--dbx-navy-700); display: flex; align-items: center; gap: 8px;
+    }
+    .em-head img { height: 18px; }
+    .em-tree { padding: 10px 14px; font-family: "DM Mono", monospace; font-size: 12px; line-height: 1.9; }
+    .em-tree .d { color: var(--dbx-navy-400); }
+    .em-tree .f { color: var(--dbx-navy-300); }
+    .em-tree .new { color: var(--dbx-green-600); }
+    .em-tree .sel { color: var(--dbx-white); background: rgba(255, 54, 33, 0.12); border-radius: 4px; padding: 0 4px; margin-left: -4px; }
+    .em-section { padding: 10px 14px; border-top: 1px solid var(--dbx-navy-700); font-size: 12px; }
+    .em-section .t { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dbx-navy-500); margin-bottom: 6px; }
+    .em-target { display: inline-block; padding: 2px 8px; border-radius: 6px; background: var(--dbx-navy-700); color: var(--dbx-white); font-family: "DM Mono", monospace; font-size: 11px; }
+    .em-res { display: flex; justify-content: space-between; font-family: "DM Mono", monospace; font-size: 11px; padding: 2px 0; }
+    .em-res .ok { color: var(--dbx-green-600); }
+    .em-code { padding: 14px 16px; font-family: "DM Mono", monospace; font-size: 12px; line-height: 1.7; white-space: pre; overflow: hidden; }
+    .em-code .c { color: var(--dbx-navy-500); } .em-code .k { color: var(--dbx-lava-500); } .em-code .s { color: var(--dbx-green-600); } .em-code .v { color: var(--dbx-yellow-600); }
+    .em-chat { padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 12.5px; line-height: 1.5; overflow: hidden; }
+    .em-chat > * { opacity: 0; transform: translateY(6px); transition: opacity 220ms ease, transform 220ms ease; }
+    .em-chat > .in { opacity: 1; transform: none; }
+    .em-user { align-self: flex-end; background: var(--dbx-navy-700); color: var(--dbx-white); padding: 8px 12px; border-radius: 10px 10px 3px 10px; max-width: 92%; }
+    .em-tool { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border: 1px solid var(--dbx-navy-700); border-radius: 8px; background: rgba(20, 61, 74, 0.35); font-size: 12px; }
+    .em-tool .i { color: var(--dbx-lava-500); }
+    .em-tool .m { font-family: "DM Mono", monospace; font-size: 11px; color: var(--dbx-navy-400); margin-left: auto; }
+    .em-tool.err { border-color: rgba(255, 171, 0, 0.5); }
+    .em-tool.err .m { color: var(--dbx-yellow-600); }
+    .em-tool.good .m { color: var(--dbx-green-600); }
+    .em-agent { color: var(--dbx-navy-300); }
+    .em-done { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--dbx-green-600); background: rgba(0, 169, 114, 0.1); color: var(--dbx-white); }
+    .em-caption { font-size: 12px; color: var(--text-tertiary); margin-top: 10px; }
+
+    /* ── Roadmap ──────────────────────────────────────────── */
+    .roadmap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 32px; }
+    .phase { border-top: 4px solid var(--accent-primary); background: var(--surface-tertiary); border-radius: 0 0 14px 14px; padding: 24px; }
+    .phase:nth-child(2) { border-top-color: var(--dbx-yellow-600); }
+    .phase:nth-child(3) { border-top-color: var(--dbx-green-600); }
+    .phase .when { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); }
+    .phase h3 { font-size: 22px; margin: 6px 0 12px; }
+    .phase ul { list-style: none; }
+    .phase li { font-size: 14px; color: var(--text-secondary); padding: 6px 0 6px 18px; position: relative; }
+    .phase li::before { content: ""; position: absolute; left: 0; top: 13px; width: 7px; height: 7px; border-radius: 2px; background: var(--accent-primary); }
+
+    /* ── Myth / fact ──────────────────────────────────────── */
+    .myths { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 32px; }
+    .myth { border: 1px solid var(--border-default); border-radius: 14px; overflow: hidden; background: var(--surface-primary); }
+    .myth .q { padding: 14px 18px; font-weight: 700; font-size: 15px; border-bottom: 1px solid var(--border-subtle); }
+    .myth .q::before { content: "\201C"; color: var(--accent-primary); margin-right: 2px; }
+    .myth .q::after { content: "\201D"; color: var(--accent-primary); margin-left: 2px; }
+    .myth .a { padding: 14px 18px; font-size: 14px; color: var(--text-secondary); line-height: 1.55; }
+
+    /* ── Footer ───────────────────────────────────────────── */
+    footer { background: var(--dbx-navy-800); color: var(--dbx-navy-400); padding: 64px 0 48px; }
+    footer .container { display: flex; flex-direction: column; gap: 24px; }
+    footer .footer-logo { height: 32px; opacity: 0.8; }
+    footer .footer-logo img { height: 100%; }
+    footer .footer-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+    footer h4 { color: var(--dbx-white); font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    footer .footer-cols a { display: block; color: var(--dbx-navy-300); text-decoration: none; font-size: 14px; padding: 3px 0; transition: color 0.2s ease; }
+    footer .footer-cols a:hover { color: var(--dbx-white); }
+    footer .footer-bottom { font-size: 12px; color: var(--dbx-navy-500); padding-top: 24px; border-top: 1px solid var(--dbx-navy-700); }
+
+    /* ── Reveal on scroll ─────────────────────────────────── */
+    .reveal { opacity: 0; transform: translateY(12px); transition: opacity 500ms cubic-bezier(0.16, 1, 0.3, 1), transform 500ms cubic-bezier(0.16, 1, 0.3, 1); }
+    .reveal.in { opacity: 1; transform: none; }
+
+    /* ── Responsive ──────────────────────────────────────── */
+    @media (max-width: 960px) {
+      .hero-grid, .two-col { grid-template-columns: 1fr; }
+      .editor-mock { grid-template-columns: 1fr; }
+      .editor-mock .em-pane { border-right: none; border-bottom: 1px solid var(--dbx-navy-700); }
+      .roadmap { grid-template-columns: 1fr; }
+      .layer { grid-template-columns: 1fr; gap: 4px; }
+      .layer .l-owner { text-align: left; }
+      footer .footer-cols { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      h1 { font-size: 38px; }
+      h2 { font-size: 30px; }
+      .hero { padding: 48px 0 64px; }
+      section { padding: 56px 0; }
+      .stat .stat-value { font-size: 36px; }
+      .bar { grid-template-columns: 90px 1fr; }
+      .bar .val { grid-column: 2; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      html { scroll-behavior: auto; }
+      .reveal, .term-line, .em-chat > * { opacity: 1 !important; transform: none !important; }
+      .bar .fill { transform: scaleX(var(--w)) !important; }
+    }
+    @media print {
+      .topnav { display: none; }
+      .reveal, .term-line, .em-chat > * { opacity: 1 !important; transform: none !important; }
+      .bar .fill { transform: scaleX(var(--w)) !important; }
+      section { break-inside: avoid-page; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- HERO -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <header class="hero">
+    <div class="container">
+      <div class="hero-logo">
+        <img src="https://cdn.bfldr.com/9AYANS2F/at/q726x4x6gn6z84bq4fcc4zg8/primary-lockup-full-color-white-rgb.svg" alt="Databricks">
+      </div>
+      <div class="hero-grid">
+        <div>
+          <span class="hero-badge"><span class="dot"></span>SDLC on Databricks &mdash; Declarative Automation Bundles</span>
+          <h1>Ship data products like software.</h1>
+          <p class="lead">One version-controlled definition for your code, pipelines, jobs, Unity Catalog objects, permissions, and tags &mdash; deployed identically to every developer, every pull request, and every environment. Declarative Automation Bundles are the Databricks-recommended way to build on the platform.</p>
+          <div class="cta-group">
+            <a class="btn btn-primary" href="#why-sdlc">Start the tour <span class="arrow">&rarr;</span></a>
+            <a class="btn btn-secondary" href="#why-dab">Why bundles</a>
+          </div>
+        </div>
+
+        <!-- Animated CLI session (script at end of body) -->
+        <div class="terminal" role="img" aria-label="Animated terminal: a developer validates, plans, and deploys a bundle; the same bundle is promoted to production by a CI service principal with an approved plan">
+          <div class="term-head" aria-hidden="true">
+            <span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>
+            <span class="term-title">orders_bundle</span>
+            <span class="term-target" id="term-target">target: dev</span>
+          </div>
+          <div class="term-body" id="term-body" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <div class="product-strip">
+        <span class="strip-label">One bundle deploys</span>
+        <div class="strip-logos">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/np65jmhvm6xfs8fzctvc4h/lakeflow-jobs-lockup-no-db-full-color-white.svg" alt="Lakeflow Jobs" title="Lakeflow Jobs — jobs, job runs">
+          <span class="strip-text" title="Lakeflow Spark Declarative Pipelines — pipelines"><img src="https://cdn.bfldr.com/9AYANS2F/at/rs5kcb74q92f6mqgr6v8rjm/primary-icon-lakeflow-pipelines-white.svg" alt="">Spark Declarative Pipelines</span>
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/q7vqbv3b7hx9r52tcv2fgkhb/unity-catalog-lockup-no-db-full-color-white.svg" alt="Unity Catalog" title="Unity Catalog — catalogs, schemas, volumes, grants">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/cn853gxm9ctc4jgxp5vjp6q/lakebase-lockup-no-db-full-color-white.svg" alt="Lakebase" title="Lakebase — projects, branches, endpoints">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/gpbkh62csg3pq59b3xp3h8hp/apps-lockup-no-db-full-color-white.svg" alt="Databricks Apps" title="Databricks Apps">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/fhp35sw9t45s7ft54hnbn3/ai-bi-dashboards-lockup-no-db-full-color-white.svg" alt="AI/BI Dashboards" title="AI/BI Dashboards">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/rv3kt32ng3rwwpvh26xkfkj3/genie-lockup-no-db-full-color-white.svg" alt="Genie Agents" title="Genie Agents">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/7kt66pxs5tj9fkf8kkzg393/mosaic-ai-lockup-no-db-full-color-white.svg" alt="Mosaic AI" title="Mosaic AI — model serving endpoints, registered models, experiments">
+          <img src="https://cdn.bfldr.com/9AYANS2F/at/vp6c9wh4nh994r28bvsxx/notebooks-lockup-no-db-full-color-white-alt.svg" alt="Notebooks" title="Notebooks and source files">
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="topnav" aria-label="Sections">
+    <div class="container">
+      <img class="nav-logo" src="https://cdn.bfldr.com/9AYANS2F/at/b87x34rfnrgcfjvg93pt83x/databricks-symbol-light.svg" alt="">
+      <div class="nav-links">
+        <a href="#why-sdlc">Why SDLC</a>
+        <a href="#lifecycle">Lifecycle</a>
+        <a href="#anatomy">Bundles</a>
+        <a href="#deep-dive">Deep dive</a>
+        <a href="#why-dab">Why DABs</a>
+        <a href="#tagging">Cost tags</a>
+        <a href="#cicd">CI/CD</a>
+        <a href="#genie-code">Genie Code</a>
+        <a href="#testing">Testing</a>
+        <a href="#adopt">Adopt</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- WHY SDLC -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="why-sdlc">
+    <div class="container">
+      <span class="eyebrow">The problem</span>
+      <h2>Data platforms fail the same way software used to.</h2>
+      <p class="lead">Jobs edited in production, pipelines copied by hand between workspaces, schedules nobody owns, and a cloud bill no one can explain. These are not tooling gaps &mdash; they are missing lifecycle practices.</p>
+
+      <div class="card-grid mt-48">
+        <div class="card reveal">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/scgrkz38jx47n6qft88q8nw/primary-icon-orange-event-log-rollover.svg" alt="">
+          <h3>Drift</h3>
+          <p>A UI edit in prod fixes tonight&rsquo;s failure and silently diverges from what is in Git. The next deploy reverts it, or worse, nobody deploys again.</p>
+        </div>
+        <div class="card reveal">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/2534k4fgn938rnrp48nhrtj6/primary-icon-orange-data-security.svg" alt="">
+          <h3>Personal identities in prod</h3>
+          <p>Jobs run as the engineer who created them. When that person leaves or changes teams, production breaks &mdash; and access reviews cannot tell who should own what.</p>
+        </div>
+        <div class="card reveal">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/pg2j3g3n84kks72tchsttbp/primary-icon-orange-data-quality-1.svg" alt="">
+          <h3>Untested changes</h3>
+          <p>Without isolated dev and test environments, the first realistic run of a change is in production &mdash; against real data, on a schedule.</p>
+        </div>
+        <div class="card reveal">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/8bqxx9wv7p55ws9cmjbc9gj/primary-icon-orange-observable-metrics.svg" alt="">
+          <h3>Unattributable spend</h3>
+          <p>Resources created by hand carry whatever tags someone remembered. Finance asks &ldquo;which product costs this?&rdquo; and the answer is a spreadsheet exercise.</p>
+        </div>
+      </div>
+
+      <div class="callout reveal">
+        <div class="callout-label">The goal</div>
+        <p><strong>Everything that runs in production is defined in Git, reviewed in a pull request, tested in an isolated environment, deployed by a service principal, and tagged for cost &mdash; automatically.</strong> Declarative Automation Bundles make that the default path rather than a discipline every team must invent.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- LIFECYCLE -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="lifecycle" class="alt">
+    <div class="container">
+      <span class="eyebrow">The lifecycle at a glance</span>
+      <h2>One bundle. Five targets. One promotion path.</h2>
+      <p class="lead">The same source and the same bundle definition move through every environment. Only the <code>targets</code> block differs &mdash; catalog, identity, permissions, schedules, and protection.</p>
+
+      <div class="arch-diagram reveal">
+        <div class="arch-title">Feature branch &rarr; pull request &rarr; main &rarr; production</div>
+        <div class="flow-row">
+          <div class="arch-box accent-blue">
+            <div class="box-title">dev</div>
+            <div class="box-sub">mode: development<br>[dev you] prefix<br>dev_you_orders schema<br>schedules paused</div>
+            <span class="box-tag box-tag-blue">each developer</span>
+          </div>
+          <div class="flow-arrow">&rarr;<span>open PR</span></div>
+          <div class="arch-box accent-blue">
+            <div class="box-title">ci</div>
+            <div class="box-sub">name_prefix: pr42_<br>retail_dev catalog<br>validate-only run<br>destroyed on close</div>
+            <span class="box-tag box-tag-blue">per pull request</span>
+          </div>
+          <div class="flow-arrow">&rarr;<span>merge</span></div>
+          <div class="arch-box accent-yellow">
+            <div class="box-title">tst</div>
+            <div class="box-sub">mode: production<br>retail_tst catalog<br>run_as tst SP<br>integration tests</div>
+            <span class="box-tag box-tag-yellow">automatic</span>
+          </div>
+          <div class="flow-arrow">&rarr;<span>tests pass</span></div>
+          <div class="arch-box accent-yellow">
+            <div class="box-title">uat</div>
+            <div class="box-sub">mode: production<br>retail_uat catalog<br>business sign-off<br>consumers can view</div>
+            <span class="box-tag box-tag-yellow">automatic</span>
+          </div>
+          <div class="flow-arrow">&rarr;<span>plan +<br>approve</span></div>
+          <div class="arch-box accent-lava">
+            <div class="box-title">prod</div>
+            <div class="box-sub">mode: production<br>retail catalog<br>schedules running<br>prevent_destroy</div>
+            <span class="box-tag box-tag-lava">required reviewer</span>
+          </div>
+        </div>
+        <div class="gate-row">
+          <div>bundle validate --strict</div><div class="gap"></div>
+          <div>ruff &middot; pytest &middot; deploy</div><div class="gap"></div>
+          <div>seed fixtures &middot; run job + quality gate</div><div class="gap"></div>
+          <div>deploy same commit</div><div class="gap"></div>
+          <div>deploy --plan plan.json &middot; tag release</div>
+        </div>
+        <div class="arch-legend">
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-blue"></span>Isolated, disposable</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-yellow"></span>Shared, deployed only by CI service principals</div>
+          <div class="arch-legend-item"><span class="arch-legend-dot legend-lava"></span>Production: reviewed plan, protected data</div>
+        </div>
+      </div>
+
+      <div class="two-col mt-32">
+        <div class="reveal">
+          <h3>The catalog is the environment</h3>
+          <p>Following the <a href="../../developer-user-isolation-in-uc/docs/uc-naming-convention-reference.md">Unity Catalog naming conventions</a>, schema and table names are identical in <code>tst</code>, <code>uat</code>, and <code>prod</code>; only the catalog changes. SQL, dashboards, and downstream consumers never need environment-specific edits.</p>
+          <p>Developers and pull requests are personalized automatically &mdash; <code>dev_&lt;you&gt;_orders</code> and <code>pr42_orders</code> &mdash; so concurrent work never collides.</p>
+        </div>
+        <div class="reveal">
+          <h3>Humans develop; service principals deploy</h3>
+          <p>Engineers deploy only their own <code>dev</code> copy. Every shared target is deployed by a dedicated, per-environment service principal authenticated with GitHub OIDC &mdash; no stored secrets.</p>
+          <p>Production workloads run as a separate <code>run_as</code> service principal, so ownership survives team changes and access reviews map cleanly to groups.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- ANATOMY -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="anatomy">
+    <div class="container">
+      <span class="eyebrow">Declarative Automation Bundles</span>
+      <h2>What a bundle is &mdash; and what <code style="font-size:0.8em">bundle deploy</code> does for you.</h2>
+      <p class="lead">A bundle is a folder in Git with a <code>databricks.yml</code>: your source code plus a declarative description of every Databricks resource it needs, for every environment. The Databricks CLI turns that description into a running data product.</p>
+
+      <div class="two-col mt-32">
+        <div class="reveal">
+          <div class="code-block"><span class="code-label">repository layout</span><pre>orders_bundle/
+├── <span class="k">databricks.yml</span>          <span class="c"># bundle, variables, artifacts, targets</span>
+├── resources/              <span class="c"># one file per deployable asset</span>
+│   ├── schemas/orders.schema.yml
+│   ├── volumes/landing.volume.yml
+│   ├── pipelines/orders_medallion.pipeline.yml
+│   └── jobs/orders_refresh.job.yml
+├── src/
+│   ├── orders_lib/         <span class="c"># wheel: rules + quality gate</span>
+│   └── pipelines/orders_medallion/transformations/
+│       ├── bronze_orders.py
+│       ├── silver_orders.py
+│       └── gold_daily_revenue.py
+├── tests/test_rules.py     <span class="c"># pytest, no workspace needed</span>
+└── pyproject.toml</pre></div>
+          <p style="font-size:14px">The complete, validated example lives in <a href="../examples/orders_bundle/databricks.yml"><code>examples/orders_bundle</code></a>.</p>
+        </div>
+        <div class="reveal">
+          <div class="code-block"><span class="code-label">databricks.yml (excerpt)</span><pre><span class="k">bundle</span>:
+  name: orders_bundle
+  engine: direct
+  databricks_cli_version: <span class="s">"&gt;= 1.20.0, &lt; 2.0.0"</span>
+
+<span class="k">include</span>:
+  - resources/*/*.yml
+
+<span class="k">artifacts</span>:
+  orders_lib:
+    type: whl
+    build: uv build --wheel
+
+<span class="k">targets</span>:
+  dev:
+    mode: development
+    default: true
+    variables: { catalog: retail_dev }
+  prod:
+    mode: production
+    variables: { catalog: retail }
+    run_as:
+      service_principal_name: <span class="v">${var.run_as_service_principal}</span>
+    presets:
+      trigger_pause_status: UNPAUSED
+      tags: { project: <span class="v">${var.tags_project}</span>, env: <span class="v">${bundle.target}</span> }</pre></div>
+        </div>
+      </div>
+
+      <h3 class="mt-48">One command, ten jobs you no longer write</h3>
+      <div class="card-grid tight mt-24">
+        <div class="card reveal"><h3>Resolve</h3><p>Variables, lookups, and <code>${resources.*}</code> references for the selected target.</p></div>
+        <div class="card reveal"><h3>Validate</h3><p>Schema, paths, and permissions checked before anything changes (<code>--strict</code> turns warnings into errors).</p></div>
+        <div class="card reveal"><h3>Apply mode &amp; presets</h3><p>Name prefixes, paused triggers, development pipelines, and tags &mdash; per target.</p></div>
+        <div class="card reveal"><h3>Build</h3><p>Wheels and other artifacts built and uploaded with a unique version each deploy.</p></div>
+        <div class="card reveal"><h3>Sync</h3><p>Source files uploaded, deleted files removed, <code>.gitignore</code> honored.</p></div>
+        <div class="card reveal"><h3>Order</h3><p>Schemas before volumes, pipelines before the jobs that reference them.</p></div>
+        <div class="card reveal"><h3>Reconcile</h3><p>Create, update, or delete each resource to match the definition.</p></div>
+        <div class="card reveal"><h3>Permission</h3><p>Resource ACLs and Unity Catalog grants applied from the same file.</p></div>
+        <div class="card reveal"><h3>Record state</h3><p>Deployment state and lock kept in the workspace &mdash; no bucket, no lock table.</p></div>
+        <div class="card reveal"><h3>Plan</h3><p><code>bundle plan</code> previews every change; a saved plan can be applied exactly.</p></div>
+      </div>
+
+      <h3 class="mt-48">Everything a data product needs, in one definition</h3>
+      <div class="chips">
+        <span class="chip">jobs</span><span class="chip">pipelines</span><span class="chip">schemas</span><span class="chip">volumes</span>
+        <span class="chip">catalogs</span><span class="chip">grants</span><span class="chip">dashboards</span><span class="chip">genie_spaces</span>
+        <span class="chip">apps</span><span class="chip">model_serving_endpoints</span><span class="chip">registered_models</span>
+        <span class="chip">experiments</span><span class="chip">quality_monitors</span><span class="chip">sql_warehouses</span><span class="chip">clusters</span>
+        <span class="chip">secret_scopes</span><span class="chip">Lakebase projects, branches &amp; endpoints</span><span class="chip">job runs</span>
+      </div>
+      <p class="mt-24" style="font-size:14px">Resource coverage grows with each CLI release. Upgrading is a one-line version pin change, not a new integration.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- DEEP DIVE -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="deep-dive" class="alt">
+    <div class="container">
+      <span class="eyebrow">Deep dive</span>
+      <h2>The features that make bundles a lifecycle tool, not just a deployer.</h2>
+
+      <ol class="bp-list mt-32">
+        <li class="reveal">
+          <h3>Deployment modes encode your environment policy</h3>
+          <p><code>mode: development</code> prefixes every resource with <code>[dev &lt;you&gt;]</code>, personalizes schemas, pauses schedules, marks pipelines as development, and tags resources with the developer. <code>mode: production</code> does the opposite: it refuses deploys from the wrong Git branch, rejects personal paths, and requires an explicit <code>run_as</code> and permissions.</p>
+        </li>
+        <li class="reveal">
+          <h3>Presets apply cross-cutting rules per target</h3>
+          <p><code>name_prefix</code>, <code>trigger_pause_status</code>, <code>pipelines_development</code>, <code>artifacts_dynamic_version</code>, and <code>tags</code> are set once per target and applied to every resource. Resource-level settings override presets; presets override mode defaults.</p>
+        </li>
+        <li class="reveal">
+          <h3>Zero hardcoding with variables, substitutions, and lookups</h3>
+          <p>Resources reference <code>${var.catalog}</code>, <code>${bundle.target}</code>, and <code>${workspace.current_user.short_name}</code> &mdash; never literal catalogs, hosts, or principals. Lookups resolve warehouses, policies, and service principals by name per workspace. CI sets any variable with <code>BUNDLE_VAR_&lt;name&gt;</code>.</p>
+        </li>
+        <li class="reveal">
+          <h3>References give you dependency ordering for free</h3>
+          <p><code>pipeline_id: ${resources.pipelines.orders_medallion.id}</code> and <code>${resources.schemas.orders_schema.name}</code> wire resources together and tell the engine what to create first. Raw strings would compile but deploy in the wrong order.</p>
+        </li>
+        <li class="reveal">
+          <h3>Identity and permissions are part of the definition</h3>
+          <p><code>run_as</code> sets the workload identity; target-level <code>permissions</code> grant <code>CAN_VIEW</code>, <code>CAN_RUN</code>, or <code>CAN_MANAGE</code> to groups across every resource; schema and volume <code>grants</code> manage Unity Catalog privileges. Access is reviewed in the same pull request as the code.</p>
+        </li>
+        <li class="reveal">
+          <h3>Production data is protected per target</h3>
+          <p><code>lifecycle: prevent_destroy: true</code> on the prod schema and volume means neither <code>bundle destroy</code> nor an accidentally deleted YAML block can drop production data &mdash; while dev and PR copies remain fully disposable.</p>
+        </li>
+        <li class="reveal">
+          <h3>Ship exactly what was reviewed</h3>
+          <p><code>bundle plan -o json &gt; plan.json</code> captures the change set; a reviewer approves it; <code>bundle deploy --plan plan.json</code> applies that plan and nothing else. Combined with <code>--fail-on-active-runs</code>, production changes are predictable.</p>
+        </li>
+        <li class="reveal">
+          <h3>Adopt what you already have</h3>
+          <p><code>bundle generate</code> turns an existing job, pipeline, dashboard, or app into bundle YAML; <code>bundle deployment bind</code> attaches the bundle to the live resource so it is updated in place instead of duplicated. Brownfield migration is incremental.</p>
+        </li>
+        <li class="reveal">
+          <h3>Scale conventions with templates and Python</h3>
+          <p><code>databricks bundle init</code> starts from built-in or organization templates so every team inherits the same targets, tags, and CI wiring. Python bundles add <em>mutators</em> &mdash; functions applied to every job or pipeline &mdash; to enforce required tags, notifications, or serverless compute centrally.</p>
+        </li>
+      </ol>
+
+      <div class="table-wrap reveal">
+        <table class="styled-table">
+          <thead><tr><th>Behavior</th><th>mode: development</th><th>mode: production</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Resource names</strong></td><td><code>[dev &lt;user&gt;]</code> prefix</td><td>as defined</td></tr>
+            <tr><td><strong>Schedules &amp; triggers</strong></td><td>paused</td><td>as defined (prod: <code>UNPAUSED</code> preset)</td></tr>
+            <tr><td><strong>Pipelines</strong></td><td>development mode</td><td>production mode</td></tr>
+            <tr><td><strong>Git branch check</strong></td><td>&mdash;</td><td>must match configured branch</td></tr>
+            <tr><td><strong>Workspace paths</strong></td><td>under the developer&rsquo;s home</td><td>personal paths rejected</td></tr>
+            <tr><td><strong>Identity</strong></td><td>the developer</td><td>explicit <code>run_as</code> + permissions required</td></tr>
+            <tr><td><strong>Concurrency</strong></td><td>concurrent runs allowed, deploy lock relaxed</td><td>deploy lock enforced</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout reveal">
+        <div class="callout-label">Direct deployment engine</div>
+        <p>Since Databricks CLI 1.20 bundles deploy through the <strong>direct engine</strong>: no Terraform binary, no Terraform state file, faster deploys, replayable plans, and optional content-addressed immutable deployments for tamper-evident production folders. Pin <code>engine: direct</code> and a CLI version range in <code>databricks.yml</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- WHY DAB -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="why-dab">
+    <div class="container">
+      <span class="eyebrow">Our opinionated approach</span>
+      <h2>Why bundles &mdash; not raw REST calls, not Terraform &mdash; for data products.</h2>
+      <p class="lead">We built the same data product three ways: one UC schema, a volume, grants, a serverless Spark Declarative Pipeline, and a scheduled job with a wheel-based quality gate. The code size was similar. What each approach <strong>covers</strong> &mdash; and what you <strong>own</strong> afterwards &mdash; was not.</p>
+
+      <div class="stats-row">
+        <div class="stat reveal"><div class="stat-value">0</div><div class="stat-label">APIs you code against with a bundle</div></div>
+        <div class="stat reveal"><div class="stat-value">29</div><div class="stat-label">REST call sites across 15 endpoints</div></div>
+        <div class="stat reveal"><div class="stat-value">5 vs 4</div><div class="stat-label">Environments covered (bundle vs others)</div></div>
+        <div class="stat reveal"><div class="stat-value">~20</div><div class="stat-label">Lines to add a new bundle environment</div></div>
+      </div>
+
+      <div class="two-col">
+        <div class="bars reveal" id="bars">
+          <div class="bar-group">
+            <h4>Lines of deployment definition</h4>
+            <div class="bar"><span class="lbl">Bundle</span><span class="track"><span class="fill dab" style="--w:0.96"></span></span><span class="val">260 &middot; 5 environments</span></div>
+            <div class="bar"><span class="lbl">Terraform</span><span class="track"><span class="fill" style="--w:1"></span></span><span class="val">251 + 10 per env &middot; 4</span></div>
+            <div class="bar"><span class="lbl">REST API</span><span class="track"><span class="fill" style="--w:0.96"></span></span><span class="val">259 &middot; 4 environments</span></div>
+          </div>
+          <div class="bar-group">
+            <h4>Platform API surface you maintain</h4>
+            <div class="bar"><span class="lbl">Bundle</span><span class="track"><span class="fill dab" style="--w:0.02"></span></span><span class="val">0 &mdash; the CLI owns it</span></div>
+            <div class="bar"><span class="lbl">Terraform</span><span class="track"><span class="fill" style="--w:0.41"></span></span><span class="val">12 resource types</span></div>
+            <div class="bar"><span class="lbl">REST API</span><span class="track"><span class="fill" style="--w:1"></span></span><span class="val">15 endpoints, 29 calls</span></div>
+          </div>
+          <p style="font-size:13px">Non-blank, non-comment lines; application code excluded. Source: <a href="deployment-complexity-comparison.md">Deployment Complexity Comparison</a>.</p>
+        </div>
+        <div class="reveal">
+          <h3>What the REST script has to implement by hand</h3>
+          <ul class="feature-list">
+            <li><span class="check x">!</span><span class="text"><strong>Auth, retries, pagination</strong><span>Token exchange and refresh, 429/5xx backoff.</span></span></li>
+            <li><span class="check x">!</span><span class="text"><strong>File sync with deletions</strong><span>Upload every file, create directories, remove stale files.</span></span></li>
+            <li><span class="check x">!</span><span class="text"><strong>Dependency order and ID threading</strong><span>Create the pipeline, capture its ID, persist it, pass it to the job.</span></span></li>
+            <li><span class="check x">!</span><span class="text"><strong>Grant reconciliation</strong><span>Compute adds and removes without revoking what it never granted.</span></span></li>
+            <li><span class="check x">!</span><span class="text"><strong>State and locking</strong><span>A hand-rolled state file and a lock with a race window.</span></span></li>
+            <li><span class="check x">!</span><span class="text"><strong>Still missing</strong><span>Plan/diff, drift detection, OIDC, destroy, selective deploy, every additional resource type.</span></span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="table-wrap reveal mt-48">
+        <table class="styled-table">
+          <thead><tr><th>Capability</th><th class="dab">Bundle</th><th>Terraform</th><th>REST API</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Per-developer isolation</strong></td><td class="dab"><span class="yes">Built in</span> &mdash; <code>mode: development</code></td><td><span class="meh">Manual</span> &mdash; prefix variable + state key per developer</td><td><span class="meh">Manual</span> &mdash; naming function</td></tr>
+            <tr><td><strong>Per-PR environments</strong></td><td class="dab"><span class="yes">Yes</span> &mdash; <code>name_prefix</code> + PR number</td><td><span class="meh">Dynamic backends</span> + orphan cleanup</td><td><span class="no">Not implemented</span></td></tr>
+            <tr><td><strong>State and locking</strong></td><td class="dab"><span class="yes">Managed in the workspace</span></td><td><span class="meh">S3 bucket + DynamoDB</span> you provision</td><td><span class="no">Hand-rolled</span></td></tr>
+            <tr><td><strong>Code sync incl. deletions</strong></td><td class="dab"><span class="yes">Built in</span>, honors <code>.gitignore</code></td><td><span class="meh">One resource per file</span></td><td><span class="meh">Hand-written</span></td></tr>
+            <tr><td><strong>Artifact build</strong></td><td class="dab"><span class="yes">On deploy</span></td><td><span class="meh">Before <code>plan</code></span>, outside Terraform</td><td><span class="meh">Subprocess + upload</span></td></tr>
+            <tr><td><strong>Protect prod data only</strong></td><td class="dab"><span class="yes">Per target</span></td><td><span class="no">Static</span> &mdash; cannot be a variable</td><td><span class="meh">Hard-coded list</span></td></tr>
+            <tr><td><strong>Reviewed plan applied exactly</strong></td><td class="dab"><span class="yes">--plan plan.json</span></td><td><span class="yes">plan -out</span> (protect the artifact)</td><td><span class="no">Not available</span></td></tr>
+            <tr><td><strong>CI credentials</strong></td><td class="dab"><span class="yes">GitHub OIDC</span></td><td><span class="meh">OIDC + cloud creds for backend</span></td><td><span class="meh">Client secret</span></td></tr>
+            <tr><td><strong>Edit and deploy in the workspace UI</strong></td><td class="dab"><span class="yes">Yes</span> &mdash; developers edit and deploy in the workspace UI, with Genie Code, to develop the Databricks data product with SDLC in mind from the start</td><td><span class="no">No</span> &mdash; UI edits drift from the code</td><td><span class="no">No</span> &mdash; UI edits drift from the code</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="mt-48">Use each tool for the layer it was built for</h3>
+      <div class="arch-diagram reveal">
+        <div class="layer-stack">
+          <div class="layer"><span class="l-tool">CLI / SDK / REST</span><span class="l-what">Runs, backfills, operational scripts, custom tooling</span><span class="l-owner">anyone, from CI or notebooks</span></div>
+          <div class="layer dab"><span class="l-tool">Declarative Automation Bundles</span><span class="l-what">Schemas, volumes, grants, jobs, pipelines, apps, dashboards, Genie spaces, serving endpoints, Lakebase</span><span class="l-owner">data product teams</span></div>
+          <div class="layer"><span class="l-tool">Terraform</span><span class="l-what">Accounts, workspaces, networking, metastores, storage credentials, external locations, catalogs, service principals, federation policies</span><span class="l-owner">platform team</span></div>
+        </div>
+      </div>
+      <p>Terraform remains the right tool for the platform foundation described in the <a href="../../workspace-architecture/docs/document.md">Enterprise Workspace Architecture</a>. Bundles are the right tool for everything a data product team ships on top of it.</p>
+
+      <h3 class="mt-48">What we hear &mdash; and the answer</h3>
+      <div class="myths">
+        <div class="myth reveal"><div class="q">We already standardized on Terraform</div><div class="a">Keep it for the platform layer. Workload teams get development mode, per-PR environments, code sync, and artifact builds that Terraform leaves to you &mdash; without a state backend per team.</div></div>
+        <div class="myth reveal"><div class="q">Our engineers don&rsquo;t want to write YAML</div><div class="a">Bundles can be authored and deployed from the workspace UI, generated from existing resources, defined in Python, and written for you by Genie Code.</div></div>
+        <div class="myth reveal"><div class="q">Bundles are only for jobs</div><div class="a">Pipelines, dashboards, apps, Genie spaces, serving endpoints, UC schemas and volumes, grants, warehouses, and Lakebase are all bundle resources.</div></div>
+        <div class="myth reveal"><div class="q">We have hundreds of existing jobs</div><div class="a"><code>bundle generate</code> and <code>bundle deployment bind</code> adopt live resources in place. Migrate one data product at a time.</div></div>
+        <div class="myth reveal"><div class="q">Clicking in the UI is faster</div><div class="a">For the first deploy, maybe. <code>bundle deploy</code> to your dev target takes seconds, and every later environment is free &mdash; with review, rollback, and audit included.</div></div>
+        <div class="myth reveal"><div class="q">It locks us into a proprietary format</div><div class="a">Bundles are plain YAML and Python in your Git repository, deployed by the open-source Databricks CLI, from any CI system.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- TAGGING -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="tagging" class="alt">
+    <div class="container">
+      <span class="eyebrow">FinOps by default</span>
+      <h2>Tag once in the bundle. Attribute every dollar.</h2>
+      <p class="lead">Cost allocation fails when tagging is a manual step. In a bundle, tags are a target preset: every taggable resource the bundle deploys inherits them, in every environment, on every deploy.</p>
+
+      <div class="two-col mt-32">
+        <div class="reveal">
+          <h3>A small, mandatory tag taxonomy</h3>
+          <div class="chips">
+            <span class="chip"><b>project</b><i>orders-medallion</i></span>
+            <span class="chip"><b>businessUnit</b><i>Retail Analytics</i></span>
+            <span class="chip"><b>costCenter</b><i>CC-0000</i></span>
+            <span class="chip"><b>owner</b><i>data-engineering</i></span>
+            <span class="chip"><b>env</b><i>${bundle.target}</i></span>
+            <span class="chip"><b>pullRequest</b><i>ci only</i></span>
+          </div>
+          <ul class="feature-list mt-24">
+            <li><span class="check">&#10003;</span><span class="text"><strong>Owners are teams, never individuals</strong><span>People move; cost centers and groups persist.</span></span></li>
+            <li><span class="check">&#10003;</span><span class="text"><strong><code>env</code> comes from the target</strong><span><code>${bundle.target}</code> cannot be mistyped and splits dev, test, and prod spend automatically.</span></span></li>
+            <li><span class="check">&#10003;</span><span class="text"><strong>Values are variables, defaults in one place</strong><span>Declared in <code>databricks.yml</code>, overridable per target or by <code>BUNDLE_VAR_*</code> in CI.</span></span></li>
+            <li><span class="check">&#10003;</span><span class="text"><strong>Developer copies are identifiable</strong><span>Development mode adds the deploying user, so stale dev deployments are easy to find and clean up.</span></span></li>
+          </ul>
+        </div>
+        <div class="reveal">
+          <div class="code-block"><span class="code-label">databricks.yml</span><pre><span class="k">variables</span>:
+  tags_project:     { default: orders-medallion }
+  tags_business_unit: { default: Retail Analytics }
+  tags_cost_center: { default: CC-0000 }
+  tags_owner:
+    description: Owning team (a team, never an individual).
+    default: data-engineering
+
+<span class="k">targets</span>:
+  prod:
+    presets:
+      <span class="k">tags</span>:
+        project:      <span class="v">${var.tags_project}</span>
+        businessUnit: <span class="v">${var.tags_business_unit}</span>
+        costCenter:   <span class="v">${var.tags_cost_center}</span>
+        owner:        <span class="v">${var.tags_owner}</span>
+        env:          <span class="v">${bundle.target}</span></pre></div>
+        </div>
+      </div>
+
+      <h3 class="mt-48">Make sure tags reach the bill</h3>
+      <div class="table-wrap reveal">
+        <table class="styled-table">
+          <thead><tr><th>Workload</th><th>How attribution reaches <code>system.billing.usage</code></th><th>Bundle practice</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Jobs and pipelines</strong></td><td>Resource tags propagate to <code>custom_tags</code>, including on serverless</td><td><code>presets.tags</code> per target</td></tr>
+            <tr><td><strong>Classic clusters, pools, SQL warehouses</strong></td><td>Compute tags propagate to usage records and cloud resources</td><td>Define compute in the bundle so presets and resource tags apply; set pool tags explicitly</td></tr>
+            <tr><td><strong>Serverless notebooks, apps, model serving</strong></td><td>Serverless usage policies attach policy tags to usage</td><td>Assign a usage policy to the run-as service principal and to the team&rsquo;s groups</td></tr>
+            <tr><td><strong>Lakebase</strong></td><td>Project custom tags and usage policies</td><td>Set tags on the Lakebase project resource</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two-col mt-32">
+        <div class="reveal">
+          <h3>Report spend by product and environment</h3>
+          <div class="code-block"><span class="code-label">sql</span><pre><span class="k">SELECT</span>
+  u.custom_tags[<span class="s">'project'</span>]    <span class="k">AS</span> project,
+  u.custom_tags[<span class="s">'costCenter'</span>] <span class="k">AS</span> cost_center,
+  u.custom_tags[<span class="s">'env'</span>]        <span class="k">AS</span> env,
+  u.billing_origin_product    <span class="k">AS</span> product,
+  ROUND(SUM(u.usage_quantity
+    * lp.pricing.effective_list.default), 2) <span class="k">AS</span> list_cost_usd
+<span class="k">FROM</span> system.billing.usage <span class="k">AS</span> u
+<span class="k">JOIN</span> system.billing.list_prices <span class="k">AS</span> lp
+  <span class="k">ON</span>  u.sku_name   = lp.sku_name
+  <span class="k">AND</span> u.cloud      = lp.cloud
+  <span class="k">AND</span> u.usage_unit = lp.usage_unit
+  <span class="k">AND</span> u.usage_end_time &gt;= lp.price_start_time
+  <span class="k">AND</span> (lp.price_end_time <span class="k">IS NULL</span>
+       <span class="k">OR</span> u.usage_end_time &lt; lp.price_end_time)
+<span class="k">WHERE</span> u.usage_date &gt;= current_date() - <span class="k">INTERVAL</span> 30 DAYS
+<span class="k">GROUP BY ALL</span>
+<span class="k">ORDER BY</span> list_cost_usd <span class="k">DESC</span>;</pre></div>
+        </div>
+        <div class="reveal">
+          <h3>Close the loop</h3>
+          <ul class="feature-list">
+            <li><span class="check">&#10003;</span><span class="text"><strong>Track untagged spend as a KPI</strong><span>Filter the same query on <code>custom_tags['project'] IS NULL</code>. Anything deployed outside a bundle shows up here first.</span></span></li>
+            <li><span class="check">&#10003;</span><span class="text"><strong>Enforce tags before deploy</strong><span>A Python mutator or a CI check fails the pull request when a required tag is missing &mdash; no tag, no merge.</span></span></li>
+            <li><span class="check">&#10003;</span><span class="text"><strong>Budget per cost center</strong><span>Account budgets and alerts filter on the same tag keys the bundle sets.</span></span></li>
+            <li><span class="check">&#10003;</span><span class="text"><strong>Clean up what dev leaves behind</strong><span>Per-PR deployments are destroyed when the PR closes; dev copies are tagged with their developer for periodic review.</span></span></li>
+          </ul>
+          <div class="callout">
+            <div class="callout-label">Billing tags vs. governed tags</div>
+            <p>Compute and workload tags drive <strong>cost attribution</strong>. Unity Catalog governed tags on tables and columns drive <strong>data classification and access policy</strong>. Use both, with separate, documented taxonomies.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- CI/CD -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="cicd">
+    <div class="container">
+      <span class="eyebrow">CI/CD with GitHub Actions</span>
+      <h2>Four workflows. No stored secrets. A human approves production.</h2>
+      <p class="lead">The reference workflows deploy the bundle with the Databricks CLI, authenticate each environment with GitHub OIDC workload identity federation, and gate production on a reviewed plan.</p>
+
+      <div class="arch-diagram reveal">
+        <div class="arch-title">.github/workflows</div>
+        <div class="flow-row" style="min-width:860px">
+          <div class="arch-box accent-blue">
+            <img class="box-logo" src="https://cdn.bfldr.com/9AYANS2F/at/x8hqmg8948mwqrgtbsxw4j9/primary-icon-orange-repos.svg" alt="">
+            <div class="box-title">ci.yml</div>
+            <div class="box-sub">pull_request<br>ruff &middot; pytest &middot; build<br>deploy ci target<br>pipeline validate-only</div>
+          </div>
+          <div class="flow-arrow">&rarr;<span>merge</span></div>
+          <div class="arch-box accent-yellow">
+            <img class="box-logo" src="https://cdn.bfldr.com/9AYANS2F/at/c427qfjnc5g82k3tbhb3ngw/primary-icon-orange-deploy.svg" alt="">
+            <div class="box-title">cd.yml</div>
+            <div class="box-sub">push to main<br>tst: deploy + integration<br>uat: deploy<br>prod: plan &rarr; approve &rarr; apply</div>
+          </div>
+          <div class="flow-arrow">&harr;<span>calls</span></div>
+          <div class="arch-box accent-lava">
+            <img class="box-logo" src="https://cdn.bfldr.com/9AYANS2F/at/xh4z4m7jj6xn5vjqhwp55v/primary-icon-orange-automation-orchestration.svg" alt="">
+            <div class="box-title">_deploy.yml</div>
+            <div class="box-sub">workflow_call<br>validate / plan /<br>deploy / destroy<br>one target at a time</div>
+          </div>
+          <div class="flow-arrow">&larr;<span>calls</span></div>
+          <div class="arch-box accent-green">
+            <img class="box-logo" src="https://cdn.bfldr.com/9AYANS2F/at/j3gbjqthrb4r7zmknjg4sx/primary-icon-orange-scheduled-jobs.svg" alt="">
+            <div class="box-title">pr-cleanup.yml</div>
+            <div class="box-sub">pull_request closed<br>bundle destroy -t ci<br>for that PR only</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col mt-32">
+        <div class="reveal">
+          <h3>Workload identity federation</h3>
+          <p>Each GitHub environment (<code>ci</code>, <code>tst</code>, <code>uat</code>, <code>prod-plan</code>, <code>prod</code>) federates to exactly one deploy service principal. The job requests a short-lived GitHub OIDC token; the CLI exchanges it for a Databricks token. Nothing to rotate, nothing to leak.</p>
+          <div class="code-block"><span class="code-label">_deploy.yml</span><pre><span class="k">jobs</span>:
+  bundle:
+    environment: <span class="v">${{ inputs.environment }}</span>
+    env:
+      DATABRICKS_AUTH_TYPE: <span class="s">github-oidc</span>
+      DATABRICKS_HOST: <span class="v">${{ vars.DATABRICKS_HOST }}</span>
+      DATABRICKS_CLIENT_ID: <span class="v">${{ vars.DATABRICKS_CLIENT_ID }}</span>
+      BUNDLE_VAR_run_as_service_principal: <span class="v">${{ vars.RUN_AS_SERVICE_PRINCIPAL }}</span>
+    steps:
+      - run: databricks current-user me    <span class="c"># prove federation first</span>
+      - run: databricks bundle validate --strict -t <span class="v">${{ inputs.target }}</span>
+      - run: databricks bundle deploy --plan plan.json --fail-on-active-runs</pre></div>
+        </div>
+        <div class="reveal">
+          <h3>Hardening that comes with the pattern</h3>
+          <ul class="feature-list">
+            <li><span class="check">&#10003;</span><span class="text"><strong>Federation policy bound to a GitHub environment</strong><span>Subject <code>repo:&lt;org&gt;/&lt;repo&gt;:environment:prod</code> &mdash; branch rules and reviewers on that environment guard production credentials.</span></span></li>
+            <li><span class="check">&#10003;</span><span class="text"><strong>Plan, then approve, then apply</strong><span><code>prod-plan</code> publishes the plan to the run summary; <code>prod</code> applies that artifact after a required reviewer approves.</span></span></li>
+            <li><span class="check">&#10003;</span><span class="text"><strong>Least-privilege tokens</strong><span><code>contents: read</code> by default; <code>id-token: write</code> only on deploying jobs.</span></span></li>
+            <li><span class="check">&#10003;</span><span class="text"><strong>Pinned supply chain</strong><span>Actions pinned to full commit SHAs; CLI version pinned in the workflow and constrained in <code>databricks.yml</code>.</span></span></li>
+            <li><span class="check">&#10003;</span><span class="text"><strong>Queued, not cancelled, releases</strong><span>Concurrency groups serialize deploys per target.</span></span></li>
+            <li><span class="check">&#10003;</span><span class="text"><strong>Fork code never sees credentials</strong><span>No <code>pull_request_target</code>; fork PRs run unit tests only.</span></span></li>
+          </ul>
+          <p class="mt-24" style="font-size:14px">Step-by-step setup: <a href="github-actions-setup.md">GitHub Actions Setup Guide</a> &middot; workflows: <a href="../examples/github-actions/.github/workflows/cd.yml"><code>examples/github-actions</code></a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- GENIE CODE -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="genie-code" class="alt">
+    <div class="container">
+      <span class="eyebrow">Bundles in the workspace</span>
+      <h2>Build bundles with Genie Code, right in the bundle editor.</h2>
+      <p class="lead">Bundles are not only a CLI experience. In a Git folder you can create a bundle from a template, open it in the bundle editor, add resources, switch targets, deploy, and run &mdash; and Genie Code works alongside you with full context of the bundle.</p>
+
+      <div class="editor-mock reveal" id="editor-mock" role="img" aria-label="Illustration of the bundle editor: file tree and Deployments panel on the left, a job definition in the center, and a Genie Code conversation on the right that adds the job, fixes a validation error, and deploys to the dev target">
+        <div class="em-pane" aria-hidden="true">
+          <div class="em-head">orders_bundle</div>
+          <div class="em-tree">
+            <div class="f">databricks.yml</div>
+            <div class="d">resources/</div>
+            <div class="f">&nbsp;&nbsp;schemas/orders.schema.yml</div>
+            <div class="f">&nbsp;&nbsp;pipelines/orders_medallion&hellip;</div>
+            <div class="new"><span class="sel">&nbsp;&nbsp;jobs/orders_refresh.job.yml</span></div>
+            <div class="d">src/</div>
+            <div class="d">tests/</div>
+          </div>
+          <div class="em-section">
+            <div class="t">Target</div>
+            <span class="em-target">dev &#9662;</span>
+          </div>
+          <div class="em-section">
+            <div class="t">Bundle resources</div>
+            <div class="em-res"><span>orders_schema</span><span class="ok">&#9679;</span></div>
+            <div class="em-res"><span>landing_volume</span><span class="ok">&#9679;</span></div>
+            <div class="em-res"><span>orders_medallion</span><span class="ok">&#9679;</span></div>
+            <div class="em-res"><span>orders_refresh</span><span class="ok" id="em-new-res">&#9675;</span></div>
+          </div>
+        </div>
+        <div class="em-pane" aria-hidden="true">
+          <div class="em-head">resources/jobs/orders_refresh.job.yml</div>
+          <div class="em-code"><span class="k">resources</span>:
+  <span class="k">jobs</span>:
+    orders_refresh:
+      name: orders_refresh
+      schedule:
+        quartz_cron_expression: <span class="v">${var.refresh_cron}</span>
+        timezone_id: UTC
+      tasks:
+        - task_key: refresh_pipeline
+          pipeline_task:
+            pipeline_id: <span class="v">${resources.pipelines
+              .orders_medallion.id}</span>
+        - task_key: quality_gate
+          depends_on:
+            - task_key: refresh_pipeline
+          environment_key: default
+          python_wheel_task:
+            package_name: orders_lib
+            entry_point: quality_gate
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: <span class="s">"4"</span>
+            dependencies:
+              - <span class="s">../../dist/*.whl</span></div>
+        </div>
+        <div class="em-pane" aria-hidden="true">
+          <div class="em-head"><img src="https://cdn.bfldr.com/9AYANS2F/at/2x894frtq656jgfnctc3wfxf/genie-code-lockup-no-db-full-color-white.svg" alt=""></div>
+          <div class="em-chat" id="em-chat">
+            <div class="em-user">Add a daily job that refreshes orders_medallion, then runs the quality gate from orders_lib. Deploy it to my dev target.</div>
+            <div class="em-tool"><span class="i">&#9636;</span>Read databricks.yml<span class="m">5 targets</span></div>
+            <div class="em-tool good"><span class="i">+</span>Create jobs/orders_refresh.job.yml<span class="m">created</span></div>
+            <div class="em-tool err"><span class="i">&#9654;</span>bundle validate --strict<span class="m">1 warning</span></div>
+            <div class="em-agent">The wheel path did not match the artifact output. Updating it to <code>../../dist/*.whl</code>.</div>
+            <div class="em-tool good"><span class="i">&#9654;</span>bundle validate --strict<span class="m">OK</span></div>
+            <div class="em-tool good"><span class="i">&#9650;</span>bundle deploy -t dev<span class="m">deployed</span></div>
+            <div class="em-done">[dev you] orders_refresh is deployed with schedule paused. Open a pull request to promote it.</div>
+          </div>
+        </div>
+      </div>
+      <p class="em-caption">Illustrative interaction. Genie Code acts with your permissions and asks before making changes.</p>
+
+      <div class="card-grid mt-48">
+        <div class="card reveal">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/53xrwhmz53brgb5tcgmhsrm/primary-icon-orange-asset-bundle.svg" alt="">
+          <h3>Create from a template</h3>
+          <p>In a Git folder choose <strong>Create &gt; Bundle</strong>: empty, default Python, default SQL, ETL pipeline, or your organization&rsquo;s custom templates.</p>
+          <span class="tag tag-blue">workspace UI</span>
+        </div>
+        <div class="card reveal">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/c427qfjnc5g82k3tbhb3ngw/primary-icon-orange-deploy.svg" alt="">
+          <h3>Deploy and run from the Deployments panel</h3>
+          <p>Open the bundle in the editor, pick a target, add job, pipeline, or existing resources, deploy, and run &mdash; no local CLI required.</p>
+          <span class="tag tag-blue">workspace UI</span>
+        </div>
+        <div class="card reveal">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/2x894frtq656jgfnctc3wfxf/genie-code-lockup-no-db-full-color-white.svg" alt="" style="width:auto;height:28px;background:var(--dbx-navy-800);padding:6px 10px;border-radius:8px;box-sizing:content-box">
+          <h3>Genie Code as your bundle engineer</h3>
+          <p>Describe the outcome; Genie Code writes resource YAML that follows your conventions, runs <code>bundle validate</code>, reads the errors, fixes them, and deploys to your dev target.</p>
+          <span class="tag tag-lava">Genie Code</span>
+        </div>
+        <div class="card reveal">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/g6c2pgkp67m5pk758kkbw6/primary-icon-orange-on-prem-cloud-hybrid.svg" alt="">
+          <h3>Bring existing work under control</h3>
+          <p>Ask Genie Code to convert a hand-built job or pipeline into a bundle resource, bind it, and move its hard-coded values into variables.</p>
+          <span class="tag tag-lava">Genie Code</span>
+        </div>
+        <div class="card reveal">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/rj8m47xnkk4r96fqg6qj56qb/primary-icon-orange-notebook.svg" alt="">
+          <h3>Conventions as instructions</h3>
+          <p>Team rules &mdash; tag keys, one resource file per asset, schema references, naming &mdash; live in instructions and skills that Genie Code applies on every change.</p>
+          <span class="tag tag-lava">Genie Code</span>
+        </div>
+        <div class="card reveal">
+          <img class="card-icon-img" src="https://cdn.bfldr.com/9AYANS2F/at/x8hqmg8948mwqrgtbsxw4j9/primary-icon-orange-repos.svg" alt="">
+          <h3>Same bundle, same pipeline</h3>
+          <p>Work done in the workspace is committed to the same Git branch. CI/CD promotes it exactly like a change made in a local IDE. Bundles inherit the Git folder&rsquo;s permissions for collaboration.</p>
+          <span class="tag tag-green">Git</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- TESTING -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="testing">
+    <div class="container">
+      <span class="eyebrow">Quality and release</span>
+      <h2>Test in layers. Release by commit. Roll back by tag.</h2>
+
+      <div class="card-grid mt-32">
+        <div class="card reveal">
+          <span class="tag tag-blue" style="margin:0 0 12px">every commit</span>
+          <h3>Unit tests</h3>
+          <p>Business rules live in a Python package (<code>orders_lib</code>) and are tested with <code>pytest</code> &mdash; no workspace, seconds to run. The same package is built into the wheel the job uses.</p>
+        </div>
+        <div class="card reveal">
+          <span class="tag tag-yellow" style="margin:0 0 12px">every pull request</span>
+          <h3>Deploy and validate</h3>
+          <p><code>bundle validate --strict</code>, a real deploy to an isolated <code>ci</code> target, and a pipeline <code>--validate-only</code> run that checks the dataflow graph without processing data.</p>
+        </div>
+        <div class="card reveal">
+          <span class="tag tag-green" style="margin:0 0 12px">every merge</span>
+          <h3>Integration tests</h3>
+          <p>Deploy to <code>tst</code>, seed fixture data into the landing volume, run the job end to end, and fail on the data quality gate.</p>
+        </div>
+      </div>
+
+      <div class="two-col mt-48">
+        <div class="reveal">
+          <h3>Promotion</h3>
+          <ul class="feature-list">
+            <li><span class="check">&#10003;</span><span class="text"><strong>Trunk-based</strong><span><code>main</code> is always deployable; short-lived feature branches.</span></span></li>
+            <li><span class="check">&#10003;</span><span class="text"><strong>Same commit, every environment</strong><span>No rebuilds or edits between <code>tst</code>, <code>uat</code>, and <code>prod</code>.</span></span></li>
+            <li><span class="check">&#10003;</span><span class="text"><strong>Release tags</strong><span>Every production deploy tags its commit &mdash; the tags are your rollback catalog.</span></span></li>
+          </ul>
+        </div>
+        <div class="reveal">
+          <h3>Rollback</h3>
+          <p>Run the CD workflow with <code>ref</code> set to the last good release tag. The same tests, plan, and approval apply &mdash; rollback is just another reviewed deploy.</p>
+          <div class="callout">
+            <div class="callout-label">Code vs. data</div>
+            <p>Redeploying code does not roll back data. Use Delta time travel or <code>RESTORE</code> for tables, and <code>prevent_destroy</code> so a bad deploy can never drop them.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- ADOPT -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="adopt" class="alt">
+    <div class="container">
+      <span class="eyebrow">Getting started</span>
+      <h2>A practical adoption path.</h2>
+      <p class="lead">Start with one data product, prove the lifecycle end to end, then make it the template for every team.</p>
+
+      <div class="roadmap">
+        <div class="phase reveal">
+          <div class="when">Weeks 1&ndash;2</div>
+          <h3>Foundation</h3>
+          <ul>
+            <li>Catalog per environment and deploy/run service principals (Terraform)</li>
+            <li>Pick one data product; <code>bundle generate</code> its job and pipeline</li>
+            <li>Add <code>dev</code> and <code>prod</code> targets, tags, and <code>prevent_destroy</code></li>
+            <li>Developers deploy personal copies from the workspace or CLI</li>
+          </ul>
+        </div>
+        <div class="phase reveal">
+          <div class="when">Weeks 3&ndash;6</div>
+          <h3>Automate</h3>
+          <ul>
+            <li>GitHub environments and OIDC federation policies</li>
+            <li><code>ci.yml</code> on every pull request, branch protection on <code>main</code></li>
+            <li><code>tst</code> integration tests, <code>uat</code>, plan-and-approve for <code>prod</code></li>
+            <li>Untagged-spend report on <code>system.billing.usage</code></li>
+          </ul>
+        </div>
+        <div class="phase reveal">
+          <div class="when">Quarter 1+</div>
+          <h3>Scale</h3>
+          <ul>
+            <li>Organization bundle template with targets, tags, and CI wiring</li>
+            <li>Python mutators enforce required tags and serverless compute</li>
+            <li>Genie Code instructions encode team conventions</li>
+            <li>Retire UI edits in shared workspaces; review stale dev deployments</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 class="mt-48">Production readiness checklist</h3>
+      <div class="card-grid tight mt-24">
+        <ul class="feature-list card reveal" style="padding:20px 24px">
+          <li><span class="check">&#10003;</span><span class="text"><strong>All resources in a bundle</strong><span>Nothing hand-created in shared targets</span></span></li>
+          <li><span class="check">&#10003;</span><span class="text"><strong>No literals in resources</strong><span>Catalogs, hosts, principals in <code>targets</code> only</span></span></li>
+          <li><span class="check">&#10003;</span><span class="text"><strong>Schema references</strong><span><code>${resources.schemas.*}</code>, never raw names</span></span></li>
+        </ul>
+        <ul class="feature-list card reveal" style="padding:20px 24px">
+          <li><span class="check">&#10003;</span><span class="text"><strong>Service principals deploy and run</strong><span>Per environment, OIDC, no secrets</span></span></li>
+          <li><span class="check">&#10003;</span><span class="text"><strong>Groups, not users</strong><span>Permissions and grants to account groups</span></span></li>
+          <li><span class="check">&#10003;</span><span class="text"><strong>Prod data protected</strong><span><code>prevent_destroy</code> on schemas and volumes</span></span></li>
+        </ul>
+        <ul class="feature-list card reveal" style="padding:20px 24px">
+          <li><span class="check">&#10003;</span><span class="text"><strong>Validated and tested</strong><span><code>--strict</code>, pytest, integration gate</span></span></li>
+          <li><span class="check">&#10003;</span><span class="text"><strong>Reviewed plan to prod</strong><span>Required reviewer, release tag</span></span></li>
+          <li><span class="check">&#10003;</span><span class="text"><strong>Tagged for cost</strong><span><code>project</code>, <code>costCenter</code>, <code>owner</code>, <code>env</code></span></span></li>
+        </ul>
+      </div>
+
+      <div class="callout reveal">
+        <div class="callout-label">Try it now</div>
+        <p>Clone the repository, open <code>examples/orders_bundle</code>, and run <code>databricks bundle validate --strict</code> then <code>databricks bundle deploy</code> &mdash; or open the folder in the workspace and ask Genie Code to deploy it to your dev target.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <div class="footer-logo">
+        <img src="https://cdn.bfldr.com/9AYANS2F/at/n8vj68cs4fwqfh3x363vsc/primary-lockup-one-color-white-rgb.svg" alt="Databricks">
+      </div>
+      <div class="footer-cols">
+        <div>
+          <h4>In this repository</h4>
+          <a href="sdlc-best-practices-reference.md">SDLC Best Practices Reference</a>
+          <a href="deployment-complexity-comparison.md">Deployment Complexity Comparison</a>
+          <a href="github-actions-setup.md">GitHub Actions Setup Guide</a>
+          <a href="../examples/orders_bundle/databricks.yml">Example bundle</a>
+        </div>
+        <div>
+          <h4>Related guides</h4>
+          <a href="../../workspace-architecture/docs/document.md">Enterprise Workspace Architecture</a>
+          <a href="../../developer-user-isolation-in-uc/docs/uc-naming-convention-reference.md">Unity Catalog Naming Conventions</a>
+          <a href="../README.md">SDLC folder README</a>
+        </div>
+        <div>
+          <h4>Databricks documentation</h4>
+          <a href="https://docs.databricks.com/aws/en/dev-tools/bundles/">Declarative Automation Bundles</a>
+          <a href="https://docs.databricks.com/aws/en/dev-tools/bundles/workspace-author/">Author bundles in the workspace</a>
+          <a href="https://docs.databricks.com/aws/en/dev-tools/auth/oauth-federation-policy/">Workload identity federation</a>
+          <a href="https://docs.databricks.com/aws/en/admin/usage/budget-policies/">Serverless usage policies</a>
+          <a href="https://docs.databricks.com/aws/en/admin/account-settings/usage-detail-tags/">Tags for usage attribution</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        Matthew Giglia &middot; Databricks Field Engineering &middot; Validated with Databricks CLI 1.22.1 (direct deployment engine), AWS, serverless compute.
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      /* ── Reveal on scroll ─────────────────────────────── */
+      var revealEls = document.querySelectorAll('.reveal, .bars');
+      if (reduce || !('IntersectionObserver' in window)) {
+        revealEls.forEach(function (el) { el.classList.add('in'); });
+      } else {
+        var ro = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) { e.target.classList.add('in'); ro.unobserve(e.target); }
+          });
+        }, { threshold: 0.15 });
+        revealEls.forEach(function (el) { ro.observe(el); });
+      }
+
+      /* ── Active section in the sticky nav ─────────────── */
+      var links = document.querySelectorAll('.topnav .nav-links a');
+      if ('IntersectionObserver' in window) {
+        var so = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (!e.isIntersecting) return;
+            links.forEach(function (a) {
+              a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id);
+            });
+          });
+        }, { rootMargin: '-45% 0px -50% 0px' });
+        document.querySelectorAll('section[id]').forEach(function (s) { so.observe(s); });
+      }
+
+      /* ── Hero terminal ────────────────────────────────── */
+      var body = document.getElementById('term-body');
+      var target = document.getElementById('term-target');
+      var script = [
+        { t: 'dev', h: '<span class="t-prompt">you@laptop $</span> <span class="t-cmd">databricks bundle validate --strict</span>', d: 500 },
+        { h: '<span class="t-dim">Name: orders_bundle  Target: dev  Mode: development</span>', d: 350 },
+        { h: '<span class="t-ok">Validation OK!</span>', d: 600 },
+        { h: '<span class="t-prompt">you@laptop $</span> <span class="t-cmd">databricks bundle deploy</span>', d: 500 },
+        { h: '<span class="t-dim">Building orders_lib... Uploading bundle files...</span>', d: 450 },
+        { h: '<span class="t-info">create</span> schemas.orders_schema   <span class="t-dim">dev_you_orders</span>', d: 220 },
+        { h: '<span class="t-info">create</span> pipelines.orders_medallion <span class="t-dim">[dev you]</span>', d: 220 },
+        { h: '<span class="t-info">create</span> jobs.orders_refresh   <span class="t-dim">schedule PAUSED</span>', d: 300 },
+        { h: '<span class="t-ok">Deployment complete!</span>', d: 1100 },
+        { t: 'prod', h: '<span class="t-dim"># GitHub Actions &middot; environment: prod &middot; OIDC</span>', d: 450 },
+        { h: '<span class="t-prompt">ci $</span> <span class="t-cmd">databricks bundle plan -t prod -o json &gt; plan.json</span>', d: 450 },
+        { h: '<span class="t-warn">update</span> jobs.orders_refresh <span class="t-dim">tasks[quality_gate]</span>', d: 600 },
+        { h: '<span class="t-dim">&#10003; Approved by required reviewer</span>', d: 500 },
+        { h: '<span class="t-prompt">ci $</span> <span class="t-cmd">databricks bundle deploy -t prod --plan plan.json</span>', d: 550 },
+        { h: '<span class="t-ok">Deployment complete!</span> <span class="t-dim">tag orders-prod-&lt;date&gt;-&lt;run&gt;</span>', d: 2600 }
+      ];
+      function render(all) {
+        body.innerHTML = '';
+        script.forEach(function (s) {
+          var div = document.createElement('div');
+          div.className = 'term-line' + (all ? ' in' : '');
+          div.innerHTML = s.h;
+          body.appendChild(div);
+        });
+        return body.children;
+      }
+      if (reduce) { render(true); target.textContent = 'dev \u2192 prod'; }
+      else {
+        var timer = null;
+        var play = function () {
+          var lines = render(false), i = 0;
+          target.textContent = 'target: dev';
+          (function step() {
+            if (i >= lines.length) { timer = setTimeout(play, 400); return; }
+            if (script[i].t) target.textContent = 'target: ' + script[i].t;
+            lines[i].classList.add('in');
+            var over = body.scrollHeight - body.clientHeight;
+            if (over > 0) body.scrollTop = over;
+            timer = setTimeout(step, script[i].d); i++;
+          })();
+        };
+        play();
+      }
+
+      /* ── Genie Code editor mock ───────────────────────── */
+      var chat = document.getElementById('em-chat');
+      var mock = document.getElementById('editor-mock');
+      var newRes = document.getElementById('em-new-res');
+      var items = chat ? Array.prototype.slice.call(chat.children) : [];
+      function showAll() { items.forEach(function (c) { c.classList.add('in'); }); if (newRes) newRes.innerHTML = '&#9679;'; }
+      if (reduce || !('IntersectionObserver' in window)) { showAll(); }
+      else if (mock) {
+        var played = false;
+        var mo = new IntersectionObserver(function (entries) {
+          if (!entries[0].isIntersecting || played) return;
+          played = true;
+          items.forEach(function (c, idx) {
+            setTimeout(function () {
+              c.classList.add('in');
+              if (idx === items.length - 2 && newRes) newRes.innerHTML = '&#9679;';
+            }, 300 + idx * 750);
+          });
+        }, { threshold: 0.35 });
+        mo.observe(mock);
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+# Continuous integration for every pull request into main.
+#   1. Fast feedback with no workspace access: lint + unit tests.
+#   2. Deploy an isolated copy of the bundle for this PR (target: ci), validate the
+#      pipeline graph, and leave it running for reviewers. pr-cleanup.yml destroys it.
+#
+# Make the "ci / unit tests" and "ci / deploy ci" checks required in branch protection.
+
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - orders_bundle/**
+      - .github/workflows/**
+
+permissions:
+  contents: read
+
+# A new push to the PR supersedes the previous run.
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: orders_bundle
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - name: Lint
+        run: uv run --extra dev ruff check .
+      - name: Unit tests
+        run: uv run --extra dev pytest -q
+      - name: Build wheel
+        run: uv build --wheel
+
+  deploy-ci:
+    name: deploy ci
+    needs: unit
+    # OIDC tokens are not issued to workflows triggered from forks.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      target: ci
+      environment: ci
+      pr_number: ${{ format('{0}', github.event.pull_request.number) }}
+      validate_pipeline: true

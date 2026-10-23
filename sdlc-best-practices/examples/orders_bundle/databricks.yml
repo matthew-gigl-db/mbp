@@ -1,0 +1,233 @@
+# orders_bundle -- reference Declarative Automation Bundle for the SDLC best practices guide.
+#
+# Deploys one medallion data product (bronze -> silver -> gold) as a single unit:
+#   Unity Catalog schema + volume + grants, a serverless Lakeflow Spark Declarative Pipeline,
+#   and a Lakeflow Job that refreshes the pipeline and runs a data quality gate.
+#
+# Conventions demonstrated (see ../../docs/sdlc-best-practices-reference.md):
+#   * Zero hardcoding: resources never contain catalog, schema, host, or principal literals.
+#     Environment-specific values live ONLY in the targets block below.
+#   * Variables live in this file; one resource file per deployable asset under resources/<type>/.
+#   * Resources reference each other through ${resources.<type>.<key>.<field>} so the
+#     deployment engine can order creates/updates correctly.
+#   * The catalog is the environment discriminator. Schema names are identical in tst/uat/prod;
+#     only dev (mode: development) and ci (name_prefix) personalize them.
+#   * Workspace hosts are NOT pinned here. CI/CD supplies DATABRICKS_HOST per GitHub environment,
+#     and each environment's service principal is federated only to that environment.
+
+bundle:
+  name: orders_bundle
+  engine: direct
+  # Pin the CLI range this bundle was validated with. CI installs a pinned version too.
+  databricks_cli_version: ">= 1.20.0, < 2.0.0"
+
+include:
+  - resources/*/*.yml
+
+# The bundle's own Python package (src/orders_lib) is built into a wheel on every
+# deploy and attached to the job environment. Unit tests run against the same code.
+artifacts:
+  orders_lib:
+    type: whl
+    build: uv build --wheel
+    path: .
+
+# Build outputs, virtualenvs, and local state are kept out of the workspace copy by
+# .gitignore, which bundle sync honors. No separate sync.exclude list to maintain.
+
+# ---------------------------------------------------------------------------
+# Variables -- the ONLY place defaults are declared. Targets override values.
+# CI/CD can also set any variable with BUNDLE_VAR_<name> environment variables.
+# ---------------------------------------------------------------------------
+variables:
+  catalog:
+    description: Unity Catalog catalog for this target. The catalog IS the environment.
+  schema_name:
+    description: Stable schema name. Identical in tst, uat, and prod.
+    default: orders
+  run_as_service_principal:
+    description: Application ID (UUID) of the service principal that runs prod-like workloads.
+    default: ""
+  workload_principal:
+    description: >-
+      Identity the pipeline and job run as, granted data privileges on the schema.
+      The deployer in dev/ci; the run_as service principal in tst/uat/prod.
+    default: ${workspace.current_user.userName}
+  engineers_group:
+    description: Account group of engineers who own this data product.
+    default: data-engineers
+  consumers_group:
+    description: Account group that reads the gold tables.
+    default: data-consumers
+  operators_group:
+    description: Account group allowed to run and monitor production jobs.
+    default: platform-operators
+  pr_number:
+    description: Pull request number, used only by the ephemeral ci target.
+    default: local
+  refresh_cron:
+    description: Quartz cron for the scheduled refresh.
+    default: "0 0 6 * * ?"
+  # FinOps tags (applied to every taggable resource through presets.tags).
+  tags_project:
+    default: orders-medallion
+  tags_business_unit:
+    default: Retail Analytics
+  tags_cost_center:
+    default: CC-0000
+  tags_owner:
+    description: Owning team (a team, never an individual).
+    default: data-engineering
+
+# Permissions are declared per target: humans get CAN_VIEW / CAN_RUN on shared
+# environments; only the deploying service principal manages them.
+#
+# Shared targets (ci, tst, uat, prod) grant CAN_MANAGE to
+# service_principal_name: ${workspace.current_user.userName}. For a service principal,
+# userName resolves to its application ID, so the deployer is declared explicitly.
+# A human who tries to deploy a shared target fails, because their email is not a
+# service principal -- deployments to shared environments go through CI/CD only.
+
+targets:
+  # -------------------------------------------------------------------------
+  # dev -- each developer deploys their own copy from a feature branch.
+  # mode: development prefixes names with [dev <user>], prefixes schemas with
+  # dev_<user>_, pauses schedules, and marks pipelines as development.
+  # -------------------------------------------------------------------------
+  dev:
+    mode: development
+    default: true
+    variables:
+      catalog: retail_dev
+    presets:
+      # Unique wheel version per deploy so serverless picks up every code change.
+      artifacts_dynamic_version: true
+      tags:
+        project: ${var.tags_project}
+        businessUnit: ${var.tags_business_unit}
+        costCenter: ${var.tags_cost_center}
+        owner: ${var.tags_owner}
+        env: ${bundle.target}
+
+  # -------------------------------------------------------------------------
+  # ci -- ephemeral, one deployment per pull request, destroyed when the PR
+  # closes. Deployed by the CI service principal into the dev catalog.
+  # -------------------------------------------------------------------------
+  ci:
+    variables:
+      catalog: retail_dev
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/ci/pr_${var.pr_number}
+    presets:
+      name_prefix: pr${var.pr_number}_
+      pipelines_development: true
+      trigger_pause_status: PAUSED
+      tags:
+        project: ${var.tags_project}
+        businessUnit: ${var.tags_business_unit}
+        costCenter: ${var.tags_cost_center}
+        owner: ${var.tags_owner}
+        env: ${bundle.target}
+        pullRequest: ${var.pr_number}
+    permissions:
+      - service_principal_name: ${workspace.current_user.userName}
+        level: CAN_MANAGE
+      - group_name: ${var.engineers_group}
+        level: CAN_VIEW
+
+  # -------------------------------------------------------------------------
+  # tst -- integration tests. Deployed automatically on merge to main.
+  # -------------------------------------------------------------------------
+  tst:
+    mode: production
+    variables:
+      catalog: retail_tst
+      workload_principal: ${var.run_as_service_principal}
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    run_as:
+      service_principal_name: ${var.run_as_service_principal}
+    presets:
+      trigger_pause_status: PAUSED
+      tags:
+        project: ${var.tags_project}
+        businessUnit: ${var.tags_business_unit}
+        costCenter: ${var.tags_cost_center}
+        owner: ${var.tags_owner}
+        env: ${bundle.target}
+    permissions:
+      - service_principal_name: ${workspace.current_user.userName}
+        level: CAN_MANAGE
+      - group_name: ${var.engineers_group}
+        level: CAN_VIEW
+      - group_name: ${var.operators_group}
+        level: CAN_RUN
+
+  # -------------------------------------------------------------------------
+  # uat -- business validation. Same artifact as tst, promoted after tests pass.
+  # -------------------------------------------------------------------------
+  uat:
+    mode: production
+    variables:
+      catalog: retail_uat
+      workload_principal: ${var.run_as_service_principal}
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    run_as:
+      service_principal_name: ${var.run_as_service_principal}
+    presets:
+      trigger_pause_status: PAUSED
+      tags:
+        project: ${var.tags_project}
+        businessUnit: ${var.tags_business_unit}
+        costCenter: ${var.tags_cost_center}
+        owner: ${var.tags_owner}
+        env: ${bundle.target}
+    permissions:
+      - service_principal_name: ${workspace.current_user.userName}
+        level: CAN_MANAGE
+      - group_name: ${var.engineers_group}
+        level: CAN_VIEW
+      - group_name: ${var.operators_group}
+        level: CAN_RUN
+      - group_name: ${var.consumers_group}
+        level: CAN_VIEW
+
+  # -------------------------------------------------------------------------
+  # prod -- deployed only by the prod service principal after a required
+  # reviewer approves the GitHub environment. Schedules run; data is protected.
+  # -------------------------------------------------------------------------
+  prod:
+    mode: production
+    variables:
+      catalog: retail
+      workload_principal: ${var.run_as_service_principal}
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    run_as:
+      service_principal_name: ${var.run_as_service_principal}
+    presets:
+      trigger_pause_status: UNPAUSED
+      tags:
+        project: ${var.tags_project}
+        businessUnit: ${var.tags_business_unit}
+        costCenter: ${var.tags_cost_center}
+        owner: ${var.tags_owner}
+        env: ${bundle.target}
+    permissions:
+      - service_principal_name: ${workspace.current_user.userName}
+        level: CAN_MANAGE
+      - group_name: ${var.engineers_group}
+        level: CAN_VIEW
+      - group_name: ${var.operators_group}
+        level: CAN_RUN
+    resources:
+      # Never let `bundle destroy` (or a removed resource block) drop production data.
+      schemas:
+        orders_schema:
+          lifecycle:
+            prevent_destroy: true
+      volumes:
+        landing_volume:
+          lifecycle:
+            prevent_destroy: true

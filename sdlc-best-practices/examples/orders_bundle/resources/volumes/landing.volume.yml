@@ -1,0 +1,17 @@
+# Managed volume where raw order files land before Auto Loader ingests them.
+resources:
+  volumes:
+    landing_volume:
+      catalog_name: ${resources.schemas.orders_schema.catalog_name}
+      schema_name: ${resources.schemas.orders_schema.name}
+      name: landing
+      volume_type: MANAGED
+      comment: Raw order files (JSON). Read by the bronze layer of the orders pipeline.
+      grants:
+        - principal: ${var.workload_principal}
+          privileges:
+            - READ_VOLUME
+        - principal: ${var.engineers_group}
+          privileges:
+            - READ_VOLUME
+            - WRITE_VOLUME

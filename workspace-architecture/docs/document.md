@@ -558,6 +558,8 @@ External Customer → API Gateway → Databricks Consumer Workspace
 
 DABs are the recommended IaC and deployment mechanism for packaging source code, jobs, pipelines, permissions, tests, and environment-specific configuration.
 
+> For a full SDLC deep dive -- bundle internals, a complete five-target example bundle, GitHub Actions CI/CD with workload identity federation, and a bundle vs Terraform vs REST API comparison -- see [SDLC Best Practices on Databricks](../../sdlc-best-practices/docs/sdlc-best-practices-reference.md).
+
 #### 12.2 DAB Target Configuration
 
 ```yaml

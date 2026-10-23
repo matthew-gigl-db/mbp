@@ -1,0 +1,7 @@
+# Remote state for prod. The bucket and lock table must exist before `terraform init`,
+# are usually provisioned by a separate bootstrap stack, and need their own IAM policy.
+bucket         = "<org>-terraform-state"
+key            = "databricks/orders/prod.tfstate"
+region         = "us-east-1"
+dynamodb_table = "<org>-terraform-locks"
+encrypt        = true

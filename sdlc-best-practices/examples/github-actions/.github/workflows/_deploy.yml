@@ -1,0 +1,164 @@
+# Reusable deployment workflow: one implementation of "deploy a bundle target",
+# called by ci.yml, cd.yml, and pr-cleanup.yml. Every caller gets the same
+# authentication, CLI version, validation, and concurrency rules.
+#
+# Authentication is GitHub OIDC workload identity federation -- there are no
+# Databricks secrets in GitHub. Each GitHub environment (ci, tst, uat, prod-plan, prod)
+# defines these environment *variables* (not secrets):
+#   DATABRICKS_HOST              workspace URL for that environment
+#   DATABRICKS_CLIENT_ID         application ID of that environment's deploy service principal
+#   RUN_AS_SERVICE_PRINCIPAL     application ID the workloads run as (shared targets)
+# and that service principal has a federation policy whose subject is
+#   repo:<org>/<repo>:environment:<environment-name>
+
+name: _deploy
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        description: Bundle target (ci, tst, uat, prod)
+        type: string
+        required: true
+      environment:
+        description: GitHub environment that holds credentials and protection rules
+        type: string
+        required: true
+      ref:
+        description: Git ref to deploy (defaults to the triggering commit)
+        type: string
+        default: ""
+      pr_number:
+        description: Pull request number (ci target only)
+        type: string
+        default: ""
+      action:
+        description: deploy, plan, or destroy
+        type: string
+        default: deploy
+      plan_artifact:
+        description: Name of an uploaded plan artifact to apply instead of re-planning
+        type: string
+        default: ""
+      validate_pipeline:
+        description: Run a validate-only pipeline update after deploying
+        type: boolean
+        default: false
+      integration_test:
+        description: Seed fixture data and run the orders_refresh job after deploying
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write   # required to mint the GitHub OIDC token
+  contents: read
+
+env:
+  BUNDLE_DIR: orders_bundle
+  DATABRICKS_CLI_VERSION: 1.22.1
+
+jobs:
+  bundle:
+    name: ${{ inputs.action }} ${{ inputs.target }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    # Never run two deployments of the same target at once; never cancel one mid-flight.
+    concurrency:
+      group: bundle-${{ inputs.target }}${{ inputs.pr_number && format('-pr{0}', inputs.pr_number) || '' }}
+      cancel-in-progress: false
+    env:
+      DATABRICKS_AUTH_TYPE: github-oidc
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
+      BUNDLE_VAR_run_as_service_principal: ${{ vars.RUN_AS_SERVICE_PRINCIPAL }}
+      BUNDLE_VAR_pr_number: ${{ inputs.pr_number || 'none' }}
+      TARGET: ${{ inputs.target }}
+    defaults:
+      run:
+        working-directory: ${{ env.BUNDLE_DIR }}
+    steps:
+      # Third-party actions are pinned to full commit SHAs; the comment records the tag.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - uses: databricks/setup-cli@8de769ec2543ee05e456ee2121350efc7efc4bda # v1.22.1
+        with:
+          version: ${{ env.DATABRICKS_CLI_VERSION }}
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+
+      - name: Who am I
+        run: databricks current-user me --output json | jq '{userName, displayName}'
+
+      - name: Validate (strict)
+        if: inputs.action != 'destroy'
+        run: databricks bundle validate --strict -t "$TARGET"
+
+      # ---- plan: produce a reviewable, replayable plan artifact -------------------
+      - name: Plan
+        if: inputs.action == 'plan'
+        run: |
+          databricks bundle plan -t "$TARGET" | tee plan.txt
+          databricks bundle plan -t "$TARGET" -o json > plan.json
+          {
+            echo "### Deployment plan for \`$TARGET\`"
+            echo '```'
+            cat plan.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload plan
+        if: inputs.action == 'plan'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: plan-${{ inputs.target }}
+          path: ${{ env.BUNDLE_DIR }}/plan.json
+          retention-days: 7
+
+      # ---- deploy: apply an approved plan, or plan-and-apply ----------------------
+      - name: Download approved plan
+        if: inputs.action == 'deploy' && inputs.plan_artifact != ''
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ inputs.plan_artifact }}
+          path: ${{ env.BUNDLE_DIR }}
+
+      - name: Deploy
+        if: inputs.action == 'deploy'
+        env:
+          PLAN_ARTIFACT: ${{ inputs.plan_artifact }}
+        run: |
+          if [ -n "$PLAN_ARTIFACT" ]; then
+            databricks bundle deploy -t "$TARGET" --plan plan.json --auto-approve --fail-on-active-runs
+          else
+            databricks bundle deploy -t "$TARGET" --auto-approve
+          fi
+          databricks bundle summary -t "$TARGET" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate pipeline graph
+        if: inputs.action == 'deploy' && inputs.validate_pipeline
+        run: databricks bundle run orders_medallion -t "$TARGET" --validate-only
+
+      - name: Seed fixture data
+        if: inputs.action == 'deploy' && inputs.integration_test
+        run: |
+          LANDING=$(databricks bundle validate -t "$TARGET" -o json \
+            | jq -r '.resources.schemas.orders_schema as $s
+                     | "/Volumes/\($s.catalog_name)/\($s.name)/\(.resources.volumes.landing_volume.name)"')
+          python scripts/make_fixture_orders.py "/tmp/orders_${GITHUB_RUN_ID}.json" --rows 200
+          databricks fs cp "/tmp/orders_${GITHUB_RUN_ID}.json" "dbfs:${LANDING}/orders/orders_${GITHUB_RUN_ID}.json"
+
+      - name: Integration test (pipeline refresh + quality gate)
+        if: inputs.action == 'deploy' && inputs.integration_test
+        run: databricks bundle run orders_refresh -t "$TARGET"
+
+      # ---- destroy: ephemeral targets only ---------------------------------------
+      - name: Destroy
+        if: inputs.action == 'destroy'
+        run: |
+          if [ "$TARGET" != "ci" ]; then
+            echo "::error::destroy is only allowed for the ephemeral ci target"
+            exit 1
+          fi
+          databricks bundle destroy -t "$TARGET" --auto-approve
