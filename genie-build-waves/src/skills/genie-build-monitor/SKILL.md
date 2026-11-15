@@ -106,7 +106,7 @@ Every number and status must match the files. Say `not checked` for anything you
 | Runtime gate failed on soak or probes only | Report | Repair from `w<w>_gate` only if the cause was external and is gone | Same | Same |
 | Branch sync failed (`SYNC_FAILED` / `branch sync failed`) | Report the error and conflicting files | Repair from `w<w>_sync` only if the cause is gone | If your own push caused the conflict, fix it, then repair from `w<w>_sync` | Same as level 3 |
 | A fix is needed in a file no re-running session owns (session `blocked` on it, integrator stray, broken shared config) | Report the fix | Report | Push the fix (section 6), repair from `w<w>_sync` | Same as level 3 |
-| Session ended `fail`, or the gate failed, with a cause in bundle source you can quote from the status, gate, runtime or summary files | Report | Report | Report (that session's job) | Push the smallest fix, even in the failed session's `owned_paths` (section 6), repair from `w<w>_sync` |
+| Session ended `fail`, or the gate failed, with a cause in bundle source you can quote from the status, gate, runtime or summary files | Report | Report | Report (that session's job) | Push the smallest fix, even in the failed session's `owned_paths` (section 6), then start one fresh run from that wave (section 8 step 4), not a repair: a repair keeps the session's SUCCESS iteration and re-runs nothing |
 | Session `blocked` on a manual prerequisite, or `requests` that change a re-running session's scope | Report and escalate | Same | Same | Same |
 | Repair refused ("job structure has changed") | Report; the owner decides on a fresh run | Same | Same | Start one fresh run with the run's own `job_parameters` (section 8), report it |
 | Build branch missing on the remote | Report ("Retarget after merge" in the README) | Same | Same | Same |
@@ -138,7 +138,7 @@ Only for the decision-table rows that allow it, and only on a finished run. Befo
 1. Confirm no run is active (guardrail 4). Level 3: the fix is in no re-running session's `owned_paths`. Level 4: it is in no `owned_paths` except the failed session's, and inside the project's bundle source.
 2. Clone or fetch `repo`, check out `build_branch` at the remote head (`git pull --ff-only`), make the smallest change, run the checks the plan names (for bundles: `databricks bundle validate --strict --target <target>`). If a check fails only because your credentials lack a scope (for example a warehouse `lookup` needs `sql`), report the exact error; do not widen scopes or work around it.
 3. Commit by explicit path (guardrail 8), push fast-forward to `build_branch`. If the push is rejected, stop and report; never rebase or force.
-4. Repair from `w<w>_sync` (section 5). The sync pulls your commit into the Git folder before the sessions; the integrator never pulls.
+4. Repair from `w<w>_sync` (section 5). The sync pulls your commit into the Git folder before the sessions; the integrator never pulls. Exception (level 4): if the fix is in a file the failed session owns, start a fresh run instead (section 8 step 4). A session's `for_each` iteration ends SUCCESS even when its status is `fail`, and a repair keeps SUCCESS iterations, so the session would not run again and your fix would not be deployed.
 5. Check `wave_<w>_sync.json` / the `w<w>_sync` output: `SYNC_PULLED` with your SHA. `SYNC_FAILED` on conflicting files means an uncommitted file in the Git folder clashes with your change: report it, do not push again.
 6. Report the SHA, files, reason and the repair id.
 
@@ -160,9 +160,10 @@ Use level 4 only when the owner has asked you to complete a build on their behal
 2. If the build has no run yet: start one with `databricks jobs run-now <job_id> --no-wait --json '{"job_parameters": {"branch": ..., "build_root": ..., "manifest_path": ...}}'` (the job defaults, unless the owner gave other values). Report its `run_id`.
 3. Monitor (Polling). On each failed wave, read the files (section 2), decide (section 4, level 4 column):
    * transient cause: repair from the task the table names, no commit;
-   * cause in bundle source with a small, quotable fix: fix and repair from `w<w>_sync` (section 6);
+   * cause in bundle source with a small, quotable fix: fix and repair from `w<w>_sync` (section 6), or fix and start a fresh run when the fix is in the failed session's own files (step 4);
    * stop condition: escalate and wait (guardrail 10).
-4. If a repair is refused ("job structure has changed"), start one fresh run with `run-now` and the run's own `job_parameters`, and the `only` task list from `docs/prompts/repair-failed-wave.md` (Step 3). This counts against `max_repairs`.
+4. Start one fresh run instead of a repair when a repair is refused ("job structure has changed") or when your fix is in a file the failed session owns (section 6 step 4). Use `run-now` with the run's own `job_parameters` and `only` = the failed wave's tasks (from `w<w>_sync`), every later wave's tasks, and `build_verdict` (see `docs/prompts/repair-failed-wave.md` Step 3). Wait until the earlier run has ended. This counts against `max_repairs`.
+   * Before you count a repeat as "the same failure after your fix" (guardrail 9), check that the failed session actually ran again after your push: a new iteration with a start time after your commit. If it did not, your fix never ran; that is not a repeat.
 5. Repeat until `BUILD_PASSED`, `BUILD_WARNING`, or a stop condition. Never start a run for any other reason.
 6. Final report: every run and repair id, every decision with the file and line that justified it, every commit (SHA, files, reason), and the verdict line.
 

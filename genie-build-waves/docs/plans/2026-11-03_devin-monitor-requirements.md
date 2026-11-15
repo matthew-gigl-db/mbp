@@ -19,7 +19,7 @@ It does **not** run sessions, edit project code (except at the optional levels 3
 | 1. Report (start here) | Read run state, task outputs, gate and status files; send a summary | `CAN_VIEW` |
 | 2. Repair | Level 1, plus `repair-run` / `run-now --only` for the cases in the decision table | `CAN_MANAGE_RUN` |
 | 3. Fix and repair (optional) | Level 2, plus push a fix to the build branch, then repair from `w<w>_sync` | `CAN_MANAGE_RUN`, and Git write access to the build branch |
-| 4. Act for the owner (optional) | Level 3 on the owner's standing instruction to complete a build: start its first run, fix files the failed session owns when the cause is quotable, start one fresh run after a refused repair; at most `max_repairs` (default 3) repairs and fresh runs, 2 attempts at the same failure; escalate only on the stop conditions in the monitor skill (guardrail 9) | Same as level 3; no new grants |
+| 4. Act for the owner (optional) | Level 3 on the owner's standing instruction to complete a build: start its first run, fix files the failed session owns when the cause is quotable (then a fresh run from that wave, since a repair keeps the session's SUCCESS iteration), start one fresh run after a refused repair; at most `max_repairs` (default 3) repairs and fresh runs, 2 attempts at the same failure; escalate only on the stop conditions in the monitor skill (guardrail 9) | Same as level 3; no new grants |
 
 Never grant `CAN_MANAGE` or `IS_OWNER`: setup (`jobs/reset`), deploys and permission changes stay with the instance owner.
 
@@ -39,9 +39,10 @@ Levels 3 and 4 rely on the branch sync task (`git` / `hybrid` workflows, `workfl
 * Authenticate with **OAuth machine-to-machine** (client ID + OAuth secret): [Authorize service principal access with OAuth](https://docs.databricks.com/aws/en/dev-tools/auth/oauth-m2m/). The CLI and SDKs pick it up from `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID` and `DATABRICKS_CLIENT_SECRET` ([unified authentication](https://docs.databricks.com/aws/en/dev-tools/auth/index/)) and exchange it for short-lived tokens.
 * Do not use personal access tokens. If Devin later documents an OIDC token issuer for its sessions, prefer workload identity federation (no stored secret) over the OAuth secret.
 * Set an expiry on the OAuth secret and record the rotation date with the instance's other secrets.
-* **Scope the OAuth secret** to `jobs` and `workspace` only ([Scoped OAuth secrets](https://docs.databricks.com/aws/en/dev-tools/auth/oauth-m2m/), [API scopes](https://docs.databricks.com/api/workspace/scopes)). A secret created without scopes gets `all-apis`. Scopes are fixed when the secret is generated; to change them, generate a new secret.
+* **Scope the OAuth secret** to `jobs` and `workspace`, plus `files` if the monitor reads the published skill from UC ([Scoped OAuth secrets](https://docs.databricks.com/aws/en/dev-tools/auth/oauth-m2m/), [API scopes](https://docs.databricks.com/api/workspace/scopes)). A secret created without scopes gets `all-apis`. Scopes are fixed when the secret is generated; to change them, generate a new secret.
   * `jobs`: `jobs get`, `list-runs`, `get-run`, `get-run-output` and, at level 2, `repair-run` / `run-now`.
   * `workspace`: `workspace export` of the files under `build_root`.
+  * `files` (optional): read `/Skills/<skills_catalog>/<skills_schema>/genie_build_monitor/SKILL.md`. It must be in the secret, not only in the CLI profile: a profile cannot request a scope the secret lacks.
   * `databricks current-user me` (acceptance check 1) works with any scoped token.
   * Do not add `authentication` (a secret with it can mint tokens with any scope), `sql` or `unity-catalog` (the gate notebook does the UC reads).
   * Levels 1-4 use the same scopes; only the job permission and Git access change.
@@ -154,3 +155,5 @@ Limit level 2 to one automatic repair per wave per run; after that, escalate.
 * Devin egress range for workspaces with IP access lists (one session's address was observed; the range is not published).
 * Whether automation sessions run as creator, and child sessions, receive personal secrets (test with a dummy personal secret; report only whether it is set).
 * Webhook payload compatibility (see Automation).
+* Making a failed session's iteration fail, so a plain repair re-runs it: design note `2026-11-15_failing-session-iterations-design.md`.
+* Owner notifications and a reply path that wakes the monitor (GitHub issues, Actions, Genie One): research spike `2026-11-15_agent-handoff-notifications-spike.md`.

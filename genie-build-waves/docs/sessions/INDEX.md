@@ -1,5 +1,12 @@
 # Session Summaries — genie-build-waves
 
+## 2026-11-15
+
+| Session | Summary |
+|---|---|
+| [monitor-fresh-run-for-session-fixes](2026-11-15_monitor-fresh-run-for-session-fixes.md) | B1: level 4 monitor starts a fresh run (not a repair) when its fix is in the failed session's files. B2: `files` scope belongs in the OAuth secret. Design note for making failed session iterations fail. |
+| [agent-handoff-notifications-spike](2026-11-15_agent-handoff-notifications-spike.md) | Research only: channels for owner notifications and agent-to-agent handoff (job notifications, GitHub issues as bot + Mobile push, reply forwarder, Genie One MCP responder, folder handoff). No code changes. |
+
 ## 2026-11-12
 
 | Session | Summary |
