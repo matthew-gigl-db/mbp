@@ -1,5 +1,11 @@
 # Session Summaries — genie-build-waves
 
+## 2026-11-15
+
+| Session | Summary |
+|---|---|
+| [agent-handoff-notifications-spike](2026-11-15_agent-handoff-notifications-spike.md) | Research only: channels for owner notifications and agent-to-agent handoff (job notifications, GitHub issues as bot + Mobile push, reply forwarder, Genie One MCP responder, folder handoff). No code changes. |
+
 ## 2026-11-12
 
 | Session | Summary |

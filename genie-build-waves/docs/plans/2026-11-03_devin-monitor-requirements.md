@@ -154,3 +154,4 @@ Limit level 2 to one automatic repair per wave per run; after that, escalate.
 * Devin egress range for workspaces with IP access lists (one session's address was observed; the range is not published).
 * Whether automation sessions run as creator, and child sessions, receive personal secrets (test with a dummy personal secret; report only whether it is set).
 * Webhook payload compatibility (see Automation).
+* Owner notifications and a reply path that wakes the monitor (GitHub issues, Actions, Genie One): research spike `2026-11-15_agent-handoff-notifications-spike.md`.
