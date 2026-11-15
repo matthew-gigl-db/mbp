@@ -134,15 +134,15 @@ Path: `build_root/<status_dir>/<run_id>/wave_<wave>_gate.json`:
   "bundle_validations": [{"root": "my-app", "target": "dev", "result": "pass | fail", "detail": "first error line when fail"}],
   "stray_files": [],
   "carryover_files": [{"path": "docs/sessions/2026-10-20_w3-09-routes.md", "kind": "summary | prior_run_code | owned_by_later_wave | inherited", "source": "run <run_id> / session 09", "claimed_by": "09 (inherited only)", "staged": true}],
-  "requests": [{"from": "07", "path": "package.json", "change": "..."}],
+  "requests": [{"from": "07", "to": "09 | owner", "path": "package.json", "change": "...", "why": "...", "priority": "high | normal"}],
   "suppressions": [{"from": "14", "path": "tsconfig.server.json", "kind": "compile-exclude", "why": "..."}],
   "commit_sha": "abc1234 or empty",
   "reason": "one line when status is fail"
 }
 ```
 
-`status` is `pass` only if every session is `pass`, every manual prereq is `done`, no check `fail`ed, every `bundle_validations` entry is `pass`, and there are no strays and, in the last runnable wave, no unclaimed carryover (in `git`/`hybrid` mode). Copy every session's `suppressions` into the gate file so a human can review them. Your `pass` is necessary but not sufficient when the wave has a `runtime_gate`: the gate notebook adds its own runtime verdict. The next job task reads this file and stops the run on `fail`, so write it even when you hit an error (use `status: "fail"` and put the error in `reason`).
+`status` is `pass` only if every session is `pass`, every manual prereq is `done`, no check `fail`ed, every `bundle_validations` entry is `pass`, and there are no strays and, in the last runnable wave, no unclaimed carryover (in `git`/`hybrid` mode). Copy every session's `suppressions` into the gate file so a human can review them. Copy every session's `requests` too, in the schema above: set `from` to the session id if it is missing, put any other free-text key (`ask`, `what`, `text`) into `change`, and set a missing `to` from the manifest (the session whose `owned_paths` cover `path`, else `owner`) and a missing `priority` to `normal`. Your `pass` is necessary but not sufficient when the wave has a `runtime_gate`: the gate notebook adds its own runtime verdict. The next job task reads this file and stops the run on `fail`, so write it even when you hit an error (use `status: "fail"` and put the error in `reason`).
 
 ### 8. Final response
 
-At most 6 lines: wave, workflow mode, gate status, per-session status, commit SHA (or "n/a" for workspace), skipped checks, suppressions count, carryover count, and any `requests` the next wave or the user must act on.
+At most 6 lines: wave, workflow mode, gate status, per-session status, commit SHA (or "n/a" for workspace), skipped checks, suppressions count, carryover count, and any `requests` the next wave or the user must act on, grouped by `to`. For a `to` session in a later wave, add that the request reaches it only if its plan or `context_notes` is updated (an owner step); list `to: owner` requests separately.

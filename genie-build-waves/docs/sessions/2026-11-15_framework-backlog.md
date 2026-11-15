@@ -1,0 +1,29 @@
+# 2026-11-15: Framework backlog from the Agentic Trading build 4 request
+
+## Problem
+
+A request doc from Agentic Trading build 4 (2026-10-31, runs `800187417582767` and `396653921760382`, sessions 50-71; consumer source `agenticTrading/docs/requests/R16_build_waves_lessons.md`) sat unmerged on branch `mg-genie-build-waves-agentic-b4-lessons` (commit `d59c71b`). It named the project, run ids and session numbers, which mbp allows only in session summaries. The owner asked whether its findings were already in `main`, then to rewrite it as a generic backlog doc before starting a new project at monitor level 4.
+
+## Findings (checked against `main` at `0b14e4a`)
+
+* Open: 1 freshness from run start (gate still uses `run_start`), 2 waivers, 4 dashboard objects, 5 request schema (runner `{path, change, why}` vs integrator `{from, path, change}`), 8 redaction placeholder.
+* Partly: 3 owner steps (planner tip covers destroy and deletes only), 6 statuses (non-final values count as incomplete and get a continuation pass; no explicit list in the runner skill), 9 tooling (`capability_probe` does not check the CLI version).
+* Done (documented): 7 blocked/failed sessions end SUCCESS (README "Why not repair?", design note `2026-11-15_failing-session-iterations-design.md`).
+
+## Changes
+
+* New `docs/plans/2026-11-15_framework-backlog.md`: the nine items, generic, with state on `main`, a proposed adopt / defer / drop, and whether to address each before a new level 4 project.
+* The old branch can be deleted once this merges.
+* Applied the "now" parts of items 1, 2, 3 and 5 (owner asked, before a new project at monitor level 4):
+  * `src/skills/genie-build-planner/SKILL.md`: freshness and fresh runs (a `require_fresh_deployment` target must be deployed or written by a session in the same wave); gate lines with outside conditions get a precondition and fallback evidence; "Operations unattended sessions cannot do" list (app create/updates, grant-changing `bundle run`, account groups, destroy and deletes, dashboard objects) planned as `manual_prereqs` or owner steps; plan cross-session changes up front.
+  * `src/skills/genie-build-session-runner/SKILL.md`: `requests` schema `{from, to, path, change, why, priority}` with rules for each key.
+  * `src/skills/genie-build-wave-integrator/SKILL.md`: same schema in the gate file; normalises older shapes; final response groups requests by `to` and flags later-session and owner requests.
+  * The gate notebook only prints `requests`, so no code change was needed.
+
+## Context (owner, 2026-11-15)
+
+The owner turned on Devin's session notifications and gave the test project's `GH_TOKEN` the needed permissions. The level 4 test project finished its run B and is running run C.
+
+## Files
+
+`docs/plans/2026-11-15_framework-backlog.md` (new), `src/skills/genie-build-planner/SKILL.md`, `src/skills/genie-build-session-runner/SKILL.md`, `src/skills/genie-build-wave-integrator/SKILL.md`, `docs/sessions/2026-11-15_framework-backlog.md`, `docs/sessions/INDEX.md`.

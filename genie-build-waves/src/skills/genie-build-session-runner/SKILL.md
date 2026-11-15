@@ -174,7 +174,7 @@ Path: `build_root/<status_dir>/<run_id>/<session_id>.json`. Exactly this shape:
   "assets_changed": ["catalog.schema.my_table"],
   "checks": [{"name": "bundle validate --strict", "result": "pass | fail | skipped", "detail": ""}],
   "assumptions": [],
-  "requests": [{"path": "package.json", "change": "add dependency x@1.2", "why": ""}],
+  "requests": [{"from": "07", "to": "09 | owner", "path": "package.json", "change": "add dependency x@1.2", "why": "", "priority": "high | normal"}],
   "suppressions": [{"path": "tsconfig.server.json", "kind": "compile-exclude | ts-ignore | lint-disable | test-skip | catch-swallow | feature-flag | other", "why": ""}],
   "attempts": [{"n": 1, "target": "app", "deployment_id": "", "result": "deploy_failed | build_failed | crashed | unhealthy | stable | interrupted", "errors": ["server/x.ts(12,3): TS2345 ..."], "fix": "", "files_changed": []}],
   "runtime": {"app": {"deployment_id": "", "state": "RUNNING"}},
@@ -182,6 +182,8 @@ Path: `build_root/<status_dir>/<run_id>/<session_id>.json`. Exactly this shape:
   "blocking": ""
 }
 ```
+
+`requests`: one object per change you need outside your `owned_paths`, with exactly these keys. `from` is your `session_id`. `to` is the session whose `owned_paths` cover `path` (look it up in the manifest), or `owner` for a person (files no session may edit, manual steps, grants). `priority` is `high` when the request is why you stopped `blocked`, otherwise `normal`. Do not use other shapes (`ask`, `what`, `text`). A request to a later session reaches it only if its plan is updated, so say in your summary what that session needs.
 
 `progress` is the milestone record from the provisional status file (step 4). If the session stops early (step limit, crash), the gate quotes `progress.next` with the session's conversation id so it can be resumed.
 

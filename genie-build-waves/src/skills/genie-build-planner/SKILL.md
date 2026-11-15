@@ -84,6 +84,7 @@ Waves run sequentially. Sessions within a wave run in parallel. Rules:
   - Good: `Table catalog.schema.features has >0 rows`
   - Good: `All session status files have status: pass`
   - Bad: `Everything looks good` (not testable)
+  - **Outside conditions:** if a gate line can only pass when something outside the code happens (rows exist only on days with activity, a span appears only on one branch of the logic, a job has run successfully), write the condition into the line and a fallback: `If X happened today, table T has rows for today; otherwise the job's last run has status SUCCESS and the plan's fallback query returns 0 errors`. Put the fallback evidence path in the session plan. Never gate on a job that has no known-good run. A gate line that cannot pass can only be waived by hand-editing status files, which an unattended monitor may not do, so it becomes an escalation.
 
 Typical wave structure:
 
@@ -116,6 +117,18 @@ For tables an `execute` or `configure` session writes (any workflow mode), add a
 For a pipeline with expectations, set `stability.max_failed_records` (and `max_dropped_records` for `expect_or_drop` rules) from what the data allows; `0` only if every rule must hold on every row. Prefer pipelines that publish their event log to Unity Catalog (`event_log` in the pipeline spec): the gate reads metrics from that table.
 
 If a target depends on something outside the project (another bundle's secrets, infra grants), either put a `configure` wave before it or list it as a `manual_prereqs` entry. A converge session will stop as `blocked` rather than work around it.
+
+**Freshness and fresh runs.** With `require_fresh_deployment: true` (the default) the gate requires the target to be deployed, run, updated or written after the build run started. A fresh run (`only` from a failed wave, which an external monitor at level 4 starts on its own) re-runs that wave and the later ones, but not earlier waves. So: a runtime target with `require_fresh_deployment: true` must be deployed or written by a session in the same wave. If an earlier wave or an outside schedule produces it, set `require_fresh_deployment: false` and check something that stays true (rows, required columns, a recent timestamp column).
+
+**Operations unattended sessions cannot do.** Genie Code job tasks are refused for some operations; plan them as `manual_prereqs` (before the wave) or as owner steps with exact commands and a check, never as session work:
+
+* creating an app, and some app updates (`Invalid delegation claim`);
+* `bundle run` of jobs that change grants or permissions;
+* account-level group changes;
+* `bundle destroy`, and deleting workspace files or folders;
+* editing a dashboard stored as a dashboard workspace object (not a file).
+
+A session that hits one of these stops `blocked`, and an unattended monitor escalates it, costing a repair cycle.
 
 ## Step 4: Write plan files
 
@@ -259,6 +272,7 @@ Then verify the manifest is valid JSON and all plan files referenced in it exist
 
 - **When in doubt, split.** Two small sessions are better than one large session that might fail halfway.
 - **Shared files are dangerous.** If two sessions need to edit the same file, one must own it and the other must record a `request`. Or refactor so each session owns its own file.
+- **Plan cross-session changes up front.** A `request` recorded during the build (`{from, to, path, change, why, priority}`) reaches a later session only if a person updates that session's plan or `context_notes`; an unattended monitor may not edit plans. If you can foresee that session A will need a change in a file session B owns, write it into B's plan now.
 - **Tests belong in the wave after the code.** Don't make a session both implement and exhaustively test — the testing session can read the implementation session's summary to know what to test.
 - **Infrastructure first, logic second.** Schemas, tables, volumes, secrets, and service principals should be in wave 0.
 - **Plan files are the contract.** If the plan file is vague, the session will improvise. Be specific about file names, function signatures, table schemas, and API contracts.
@@ -269,6 +283,6 @@ Then verify the manifest is valid JSON and all plan files referenced in it exist
 - **Shared `root_path` only for non-dev targets.** Put `workspace.root_path: /Workspace/.bundle/${bundle.name}/${bundle.target}` under the shared targets (`targets.prod.workspace`), never at the top level: development mode rejects a `root_path` that does not start with `~/` or contain the user name, and dev should keep the CLI default `~/.bundle/<bundle>/<target>`. Deployment state lives under `root_path`, so moving it later needs `bundle destroy` at the old path first (resource ids such as a Genie space id change on the redeploy).
 - **Several bundles in one project.** One bundle cannot reference another bundle's `${resources...}`, and development mode renames only the resources a bundle owns. A consumer bundle that needs the producer's dev names builds them the same way: `dev_${workspace.current_user.short_name}_<schema>` and `"[dev ${workspace.current_user.short_name}] <warehouse name>"` (this works inside a `lookup`). Never hard-code one developer's resolved names.
 - **On-deploy job runs.** A `job_runs` resource with `lifecycle.triggers: [{on_bundle_deploy: true}]` runs on update deploys too, not only the first create. Whether a failed run makes `bundle deploy` fail is not established: a converge session should check the run's own result, not only the deploy's exit code.
-- **Owner-only steps.** Genie Code's tools may block `bundle destroy` and file or folder deletes. Write those as owner steps in runbooks and plans, with the exact commands, rather than session tasks.
+- **Owner-only steps.** Genie Code's tools may block `bundle destroy` and file or folder deletes (full list: "Operations unattended sessions cannot do"). Write those as owner steps in runbooks and plans, with the exact commands, rather than session tasks.
 - **Repo-root files nobody owns.** An untracked file at the project root (for example a starter notebook kept for terminal compute) is reported by the integrator as a stray. Commit it before the build or add it to `.gitignore`.
 - **Migrations need convergence.** If an edit wave touches database migrations, SQL DDL, or schema files, the next wave must include either a `table` runtime target check (for `workspace` mode) or a converge wave that deploys and exercises the schema. Static gates (bundle validate, file existence) do not catch runtime schema bugs like missing columns or wrong references.
