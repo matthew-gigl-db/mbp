@@ -14,7 +14,16 @@ A request doc from Agentic Trading build 4 (2026-10-31, runs `800187417582767` a
 
 * New `docs/plans/2026-11-15_framework-backlog.md`: the nine items, generic, with state on `main`, a proposed adopt / defer / drop, and whether to address each before a new level 4 project.
 * The old branch can be deleted once this merges.
+* Applied the "now" parts of items 1, 2, 3 and 5 (owner asked, before a new project at monitor level 4):
+  * `src/skills/genie-build-planner/SKILL.md`: freshness and fresh runs (a `require_fresh_deployment` target must be deployed or written by a session in the same wave); gate lines with outside conditions get a precondition and fallback evidence; "Operations unattended sessions cannot do" list (app create/updates, grant-changing `bundle run`, account groups, destroy and deletes, dashboard objects) planned as `manual_prereqs` or owner steps; plan cross-session changes up front.
+  * `src/skills/genie-build-session-runner/SKILL.md`: `requests` schema `{from, to, path, change, why, priority}` with rules for each key.
+  * `src/skills/genie-build-wave-integrator/SKILL.md`: same schema in the gate file; normalises older shapes; final response groups requests by `to` and flags later-session and owner requests.
+  * The gate notebook only prints `requests`, so no code change was needed.
+
+## Context (owner, 2026-11-15)
+
+The owner turned on Devin's session notifications and gave the test project's `GH_TOKEN` the needed permissions. The level 4 test project finished its run B and is running run C.
 
 ## Files
 
-`docs/plans/2026-11-15_framework-backlog.md` (new), `docs/sessions/2026-11-15_framework-backlog.md`, `docs/sessions/INDEX.md`.
+`docs/plans/2026-11-15_framework-backlog.md` (new), `src/skills/genie-build-planner/SKILL.md`, `src/skills/genie-build-session-runner/SKILL.md`, `src/skills/genie-build-wave-integrator/SKILL.md`, `docs/sessions/2026-11-15_framework-backlog.md`, `docs/sessions/INDEX.md`.

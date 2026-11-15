@@ -10,11 +10,11 @@ State on `main` is as of the date above.
 
 | # | Item | State on `main` | Proposed | Before a new level 4 project? |
 |---|---|---|---|---|
-| 1 | Freshness is measured from the run start | Open | Adopt | Planner rule now; code change later |
-| 2 | Tracked gate waivers and gate preconditions | Open | Adopt (planner guidance now, `waivers` block later) | Planner guidance |
-| 3 | Owner-interactive steps | Partly (destroy and deletes only) | Adopt (planner list now, `owner_steps` field later) | Planner list |
+| 1 | Freshness is measured from the run start | Planner rule done 2026-11-15; gate change open | Adopt | Done (planner) |
+| 2 | Tracked gate waivers and gate preconditions | Planner guidance done 2026-11-15; `waivers` block open | Adopt (planner guidance now, `waivers` block later) | Done (planner) |
+| 3 | Owner-interactive steps | Planner list done 2026-11-15; `owner_steps` field open | Adopt (planner list now, `owner_steps` field later) | Done (planner) |
 | 4 | Sessions cannot edit dashboard objects | Open | Adopt (planner guidance) | Only if the project has dashboards |
-| 5 | One request schema and routing to later sessions | Open | Adopt | Schema now |
+| 5 | One request schema and routing to later sessions | Schema and grouping done 2026-11-15; warn/fail option open | Adopt | Done (schema) |
 | 6 | Non-standard session status values | Partly | Adopt (small) | Optional |
 | 7 | Failed or blocked sessions end SUCCESS | Documented; design note | Defer (design note) | No |
 | 8 | Error patterns that match the redaction placeholder | Open | Adopt (planner note) | Only if telemetry gates are used |
