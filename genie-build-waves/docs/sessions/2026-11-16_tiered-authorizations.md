@@ -28,9 +28,9 @@ underwritingGenie Build 0 blocked three times on Auto Mode refusals (run-now on 
 ## Decisions and open items
 
 * `PARAMETER_OVERRIDE` warns instead of failing; the owner decides.
-* Tier 3 needs the owner to pull the build branch into the Git folder and run setup (the monitor never runs setup). Follow-up: have setup pull the build branch before reading grants so the monitor can apply grants unattended.
+* Tier 3 unattended (follow-up, same day): setup's new first cell pulls the build branch (Repos API, the build job's deployed `branch` default; skipped in workspace mode or with `sync_branch: false`; a failed pull prints `SETUP_SYNC_FAILED` and setup continues). The setup job now declares the monitor at `monitor_job_level`, so a level 4 monitor with CAN_MANAGE_RUN runs setup with no job parameters to apply its own grant, then checks `setup_sync` and `monitor_authorization_grants.kept` in the setup output. Below level 4 it reports `GRANT_PROPOSED`. Not run live.
 * Untested: whether for_each inputs accept long approval text on large manifests; whether a runner reached through the UC Skill treats manifest text differently.
 
 ## Files
 
-`src/notebooks/authorizations.py` (new), `tests/test_authorizations.py` (new), `src/notebooks/waves_manifest.py`, `setup_build_waves_job.ipynb`, `find_incomplete_sessions.ipynb`, `build_verdict.ipynb`, four `SKILL.md` files, `docs/manifest-schema.md`, `README.md`, this file, `docs/sessions/INDEX.md`.
+`src/notebooks/authorizations.py` (new), `tests/test_authorizations.py` (new), `src/notebooks/branch_sync.py`, `tests/test_branch_sync.py`, `resources/setup_build_waves.job.yml`, `databricks.yml`, `src/notebooks/waves_manifest.py`, `setup_build_waves_job.ipynb`, `find_incomplete_sessions.ipynb`, `build_verdict.ipynb`, four `SKILL.md` files, `docs/manifest-schema.md`, `README.md`, this file, `docs/sessions/INDEX.md`.

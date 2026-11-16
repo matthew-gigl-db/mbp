@@ -10,6 +10,22 @@ CONFLICT = ("Conflict pulling from remote. Conflicting files: probe/b.txt.\n"
             "Please commit or discard the changes and try again.")
 
 
+def test_job_parameter_default():
+    params = [{"name": "branch", "default": " b1 "}, {"name": "x"}]
+    assert bs.job_parameter_default(params, "branch") == "b1"
+    assert bs.job_parameter_default(params, "x") == ""
+    assert bs.job_parameter_default(None, "branch") == ""
+
+
+def test_setup_sync_message():
+    assert bs.setup_sync_message({"ok": True, "skipped": "workspace"}).startswith("SETUP_SYNC_SKIPPED")
+    assert bs.setup_sync_message({"ok": False, "error": "conflict"}).startswith("SETUP_SYNC_FAILED: conflict")
+    pulled = {"ok": True, "pulled": True, "branch": "b", "before": "a" * 40, "after": "c" * 40}
+    assert bs.setup_sync_message(pulled) == f"SETUP_SYNC_PULLED: b {'a' * 12} -> {'c' * 12}"
+    same = {"ok": True, "pulled": False, "branch": "b", "before": "c" * 40, "after": "c" * 40}
+    assert bs.setup_sync_message(same) == f"SETUP_SYNC_UP_TO_DATE: b at {'c' * 12}"
+
+
 def test_sync_result_path():
     assert bs.sync_result_path("/s/123", "4-1") == "/s/123/wave_4-1_sync.json"
 
