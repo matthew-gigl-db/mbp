@@ -12,6 +12,13 @@ resources:
       tags:
         purpose: build-waves
         managed_by: genie-build-waves
+      # External monitor: same principal and level as the build job. CAN_VIEW lets it read setup
+      # output (kept / dropped grants, SETUP_SYNC_*); CAN_MANAGE_RUN lets a level 4 monitor run
+      # setup with the job defaults to apply its own grants (monitor skill, section 9). The CLI
+      # drops this entry when monitor_principal is empty; the bundle owns this job ACL too.
+      permissions:
+        - service_principal_name: ${var.monitor_principal}
+          level: ${var.monitor_job_level}
       parameters:
         - name: run_smoke
           default: "false"

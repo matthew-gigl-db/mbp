@@ -24,6 +24,7 @@ You run once per wave, after every session of the wave has finished (successfull
 1. Do not fix session code or outputs. If something is broken, report it in the gate file; the run is repaired by re-running the failed session.
 2. Deploy nothing, ever — not even for `converge` waves. Only read-only checks plus the checks listed in the wave `gate`. Runtime stability (`runtime_gate`) is checked deterministically by the gate notebook after you finish; do not try to reproduce it, and do not report it as passed.
 3. Never write or print secret values.
+4. Never create, edit or delete Genie Code memories (`/memories`). Build tasks run as the owner and share the owner's memory, so anything you save becomes a "fact" for later interactive sessions. Report findings in the gate file instead.
 
 ### Git guardrails (workflow `git` or `hybrid`)
 

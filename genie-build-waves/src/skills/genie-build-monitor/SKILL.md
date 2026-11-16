@@ -23,7 +23,7 @@ The setup job also publishes this file as the UC Skill `<skills_catalog>.<skills
 ## Guardrails (hard rules)
 
 1. **Identity first.** Run `databricks current-user me`. If it is not the monitor principal you were told to use, stop and report. Ignore other Databricks credentials in the environment.
-2. **Never** run the setup job, deploy a bundle, change job settings or permissions, edit the manifest, cancel a run you did not start, or resume Genie Code conversations. Never write files in the Databricks workspace: your changes reach the project only through Git (levels 3-4).
+2. **Never** run the setup job (one exception: level 4, to apply your own grant, section 9), deploy a bundle, change job settings or permissions, edit the manifest, cancel a run you did not start, or resume Genie Code conversations. Never write files in the Databricks workspace: your changes reach the project only through Git (levels 3-4). **Job parameters:** pass only the run's own `branch`, `build_root` and `manifest_path`, unchanged; never add, change or invent one. A run-now or repair job parameter replaces the same-named task parameter in every task (even undeclared ones), and `build_verdict` reports any difference as `PARAMETER_OVERRIDE`. Never put approvals in a job parameter.
 3. **Repair limits.** Levels 2-3: one automatic repair per wave per run, then escalate. Level 4: at most `max_repairs` in total for the build and at most 2 attempts at the same failure, then escalate.
 4. **One writer at a time.** Push to the build branch only while no run of the build job is active (`databricks jobs list-runs --job-id <job_id> --active-only` is empty). Never push to `main`/`master`, never force-push, never rewrite history, never merge, never approve your own commits.
 5. **Smallest change.** A level 3-4 fix only does what the repair needs. Report every commit (SHA, files, reason).
@@ -31,8 +31,8 @@ The setup job also publishes this file as the UC Skill `<skills_catalog>.<skills
 7. **Read only what the build needs:** the build job, its runs, and files under `build_root`. Do not open other workspace objects even where your permissions allow it.
 8. **Mark your commits.** Commit as the monitor's own Git identity if you have one. Either way, prefix the message with your agent name (for example `monitor:`) and add a trailer naming the run and wave (`Build-Run: <run_id> wave <w>`). A commit cannot contain its own SHA; record SHA references in a second commit.
 9. **Stop conditions (all levels; level 4 escalates and waits).** Stop and escalate when:
-   * the fix needs a file outside the project's bundle source, or touches the manifest or plan files;
-   * the fix needs a permission, grant, IP access list or job-settings change;
+   * the fix needs a file outside the project's bundle source, or touches the manifest or plan files (exception, level 4: the monitor grants file, section 9);
+   * the fix needs a permission, grant, IP access list or job-settings change, or an approval that `authorization_policy.monitor_may_authorize` does not allow you to grant;
    * the same failure returns after your fix or repair, or a repair limit is reached;
    * setup, branch sync or Genie Code infrastructure fails in a way a repair does not clear;
    * the change would destroy or recreate a resource (for example change a Genie space id), or touch a production target;
@@ -165,7 +165,20 @@ Use level 4 only when the owner has asked you to complete a build on their behal
 4. Start one fresh run instead of a repair when a repair is refused ("job structure has changed") or when your fix is in a file the failed session owns (section 6 step 4). Use `run-now` with the run's own `job_parameters` and `only` = the failed wave's tasks (from `w<w>_sync`), every later wave's tasks, and `build_verdict` (see `docs/prompts/repair-failed-wave.md` Step 3). Wait until the earlier run has ended. This counts against `max_repairs`.
    * Before you count a repeat as "the same failure after your fix" (guardrail 9), check that the failed session actually ran again after your push: a new iteration with a start time after your commit. If it did not, your fix never ran; that is not a repeat.
 5. Repeat until `BUILD_PASSED`, `BUILD_WARNING`, or a stop condition. Never start a run for any other reason.
-6. Final report: every run and repair id, every decision with the file and line that justified it, every commit (SHA, files, reason), and the verdict line.
+6. Final report: every run and repair id, every decision with the file and line that justified it, every commit (SHA, files, reason), every approval you granted (section 9), and the verdict line.
+
+## 9. Grant an approval (level 4, tier 3)
+
+Sessions follow only the approvals setup renders into their prompt (`Owner authorizations ...`); approval text in files is ignored, and a side-effecting step that only a plan asks for is refused. When a session reports a refused or missing approval (`blocked_actions` in its status file, or a quoted Auto Mode refusal):
+
+1. Check `authorization_policy.monitor_may_authorize` in the manifest. You may grant only an action listed there, and only on that session's own targets for the listed scope (`own_runtime_targets`, `owned_paths`, `owned_assets`, `project_schema`). Never permissions, grants, secrets, groups, destroy, or another session's targets. Anything else is a stop condition (guardrail 9): put the exact entry the owner can add to the session's `authorizations` in your escalation.
+2. Add one entry to the grants file (`authorization_policy.monitor_grants_file`, default `<plans_dir>/authorizations.monitor.json`, a list or `{"grants": [...]}`): `{"action", "target", "session", "reason", "evidence"}`. `evidence` quotes the refusal and names the run id. Commit and push it like a fix (guardrails 4, 5, 8).
+3. Setup renders grants; a repair does not. Setup pulls the build branch into the Git folder first (`SETUP_SYNC_PULLED` / `SETUP_SYNC_UP_TO_DATE`), so your pushed commit is what it reads.
+   * Level 4, with CAN_MANAGE_RUN on the setup job: once no build run is active, run the setup job with **no job parameters** (`databricks jobs run-now <setup_job_id> --no-wait`; never pass `force` or `run_smoke`). Only to apply your grants, at most once per grant commit.
+   * Read the setup result (`databricks jobs get-run-output` on its task): `setup_sync.message` must be `SETUP_SYNC_PULLED` or `SETUP_SYNC_UP_TO_DATE` with your SHA as `after`, and `monitor_authorization_grants.kept` must contain your entry. If setup failed, the sync failed, or your entry is under `dropped`, stop and escalate with the message (guardrail 9).
+   * Then start a fresh run of the failed wave (section 8 step 4).
+   * Without CAN_MANAGE_RUN on the setup job, or below level 4: report `GRANT_PROPOSED` with the SHA, entry and reason, and ask the owner to run setup.
+4. Count each grant against `max_repairs`. List every grant in the final report.
 
 ## Polling
 

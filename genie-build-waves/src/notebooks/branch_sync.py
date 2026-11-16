@@ -23,6 +23,31 @@ PROTECTED_BRANCHES = {"main", "master"}
 _CONFLICT_RE = re.compile(r"Conflicting files:\s*(.+)")
 
 
+def job_parameter_default(parameters, name: str) -> str:
+    """Default of job parameter `name` from jobs/get settings.parameters ("" when absent).
+
+    Setup pulls the build branch named by the build job's own `branch` default, the value the
+    bundle deployed, so a pull never follows a value someone passed at run time.
+    """
+    for p in parameters or []:
+        if isinstance(p, dict) and p.get("name") == name:
+            return str(p.get("default") or "").strip()
+    return ""
+
+
+def setup_sync_message(result: dict) -> str:
+    """One-line summary of setup's pull, in the same style as the wave sync."""
+    if result.get("skipped"):
+        return f"SETUP_SYNC_SKIPPED: {result['skipped']}"
+    if not result.get("ok"):
+        return (f"SETUP_SYNC_FAILED: {result.get('error')} (setup continues with the folder as it is; "
+                f"monitor grants and plans may be stale)")
+    if result.get("pulled"):
+        return (f"SETUP_SYNC_PULLED: {result.get('branch')} {str(result.get('before'))[:12]} -> "
+                f"{str(result.get('after'))[:12]}")
+    return f"SETUP_SYNC_UP_TO_DATE: {result.get('branch')} at {str(result.get('after'))[:12]}"
+
+
 def sync_result_path(status_dir: str, wave) -> str:
     """w<wave>_sync's result for one wave in the run's status directory."""
     return os.path.join(status_dir, f"wave_{wave}_sync.json")

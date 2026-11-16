@@ -64,7 +64,7 @@ variables:
 
   # Optional external monitoring agent (any agent that reads job runs and the monitor skill).
   # Application (client) ID of its service principal. Set:
-  # * deploy grants it monitor_job_level on the build job (bundle-managed job ACL), and
+  # * deploy grants it monitor_job_level on the build and setup jobs (bundle-managed job ACLs), and
   # * setup grants it USE CATALOG, USE SCHEMA and READ VOLUME on the monitor skill only.
   # Empty (default): no grants. The build_root folder grant stays manual (README: "External monitor").
   monitor_principal:
