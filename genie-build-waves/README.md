@@ -85,7 +85,8 @@ A manifest can span several bundles. List them in a wave's `validate_bundles` (`
 | Build verdict notebook | `src/notebooks/build_verdict.ipynb` | Final task (`run_if: ALL_DONE`, depends on every wave gate): fails the run with `BUILD_FAILED` when any gate failed or did not finish |
 | Gate helpers | `src/notebooks/gate_helpers.py` | Pure helpers (tested): verdict, `required_checks`, Genie space content matching for freshness |
 | Instance guard | `src/notebooks/instance_guard.py` | Pure ownership checks (tested), shared by the deploy script and setup: job `deployment.metadata_file_path` under the instance root, summary IDs vs remote state, build job manifest and latest run |
-| Deploy script | `scripts/deploy_instance.py` | The supported way to deploy an instance: moves the local state cache aside, runs the instance guard, deploys, then checks job ownership again |
+| Deploy script | `scripts/deploy_instance.py` | The supported way to deploy an instance: moves the local state cache aside, runs the instance guard, deploys, then checks job ownership again. Run it in the web terminal |
+| Setup helper notebook | `scripts/setup_helper.ipynb` | Per-project helper driven by the vars file: validates the manifest, prints the deploy commands, finds the instance's jobs from its bundle state, runs setup and shows its result. Serverless-safe; never deploys or starts a build |
 | Setup notebook | `src/notebooks/setup_build_waves_job.ipynb` | Validates the manifest, publishes the runner and integrator skills to UC, creates/reuses automations, generates the task graph (with per-task timeouts and retries) from the manifest, resets the build and smoke jobs |
 | Build job YAML | `resources/build_waves.job.yml` | Shell job (one placeholder); setup notebook replaces with full wave graph |
 | Setup job YAML | `resources/setup_build_waves.job.yml` | Runs the setup notebook. Run it after every deploy (deploy restores the placeholders); `run_smoke=true` also runs the smoke job |
@@ -179,7 +180,9 @@ python scripts/deploy_instance.py --target dev --vars /Workspace/Users/you@examp
 python scripts/deploy_instance.py --target dev --vars /Workspace/Users/you@example.com/my-project/docs/plans/build-waves.vars.json
 ```
 
-The script moves the local state cache aside, checks that every job `bundle summary` names belongs to this instance, deploys, and checks again (see "One deployment per project" below). It exits 2 without deploying when a check fails; `--force` overrides. From Genie Code, run it through Python `subprocess` in the bundle folder.
+The script moves the local state cache aside, checks that every job `bundle summary` names belongs to this instance, deploys, and checks again (see "One deployment per project" below). It exits 2 without deploying when a check fails; `--force` overrides. It calls the Databricks CLI, so run it where the CLI works: the **web terminal**, or any compute where `databricks --version` succeeds. On serverless notebooks and Genie Code's serverless sessions the CLI can refuse to run ("only supported for interactive use from the web terminal"), and Genie Code's CLI tool keeps a state cache the script cannot clear. From Genie Code, where the CLI works, run it through Python `subprocess` in the bundle folder.
+
+**Setup helper notebook.** `scripts/setup_helper` does the rest from a notebook, on serverless or classic compute, driven by the same vars file: it validates the manifest with `waves_manifest.validate_manifest()` (the check setup runs) plus plan-file checks, prints the two `deploy_instance.py` commands for the terminal, finds the instance's jobs from its remote bundle state (not by name), runs the setup job and shows its result (job IDs, published skills, automations, monitor grants). Widgets: `vars_file`, `target`, `action` (`check` is read-only; `run_setup` runs setup), `run_smoke`, `wait_minutes`, optional `bundle_dir` and `root_path` (required for non-dev targets). It never deploys, starts a build run or changes permissions.
 
 The plain CLI equivalent, only safe after you have checked `bundle summary` yourself:
 

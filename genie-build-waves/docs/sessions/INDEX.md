@@ -4,6 +4,7 @@
 
 | Session | Summary |
 |---|---|
+| [setup-helper-notebook](2026-11-15_setup-helper-notebook.md) | Generic `scripts/setup_helper` notebook (widgets + vars file): validate manifest with the real validator, print deploy commands, find jobs from bundle state, run setup and show its result. README: run `deploy_instance.py` in the web terminal. |
 | [framework-backlog](2026-11-15_framework-backlog.md) | Agentic Trading build 4 request rewritten as a generic backlog (`docs/plans/2026-11-15_framework-backlog.md`): 5 open, 3 partly done, 1 documented; proposed adopt / defer / drop each. Applied items 1, 2, 3, 5 (planner rules, unattended-operations list, one `requests` schema in runner and integrator). |
 | [monitor-fresh-run-for-session-fixes](2026-11-15_monitor-fresh-run-for-session-fixes.md) | B1: level 4 monitor starts a fresh run (not a repair) when its fix is in the failed session's files. B2: `files` scope belongs in the OAuth secret. Design note for making failed session iterations fail. |
 | [agent-handoff-notifications-spike](2026-11-15_agent-handoff-notifications-spike.md) | Research only: channels for owner notifications and agent-to-agent handoff (job notifications, GitHub issues as bot + Mobile push, reply forwarder, Genie One MCP responder, folder handoff). No code changes. |
