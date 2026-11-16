@@ -27,6 +27,7 @@ import os
 import re
 
 from app_probes import validate_probe, validate_probe_auth
+from authorizations import render_authorizations, validate_authorizations
 
 VALID_MODES = {"edit", "execute", "configure", "converge"}
 VALID_TARGET_TYPES = {"app", "job", "pipeline", "dashboard", "genie_space", "table"}
@@ -41,7 +42,10 @@ MAX_JOB_TASKS = 1000  # Lakeflow Jobs limit per job
 # genie_task.parameters of the runner / integrator automations. The setup notebook puts a
 # {{param}} placeholder for each one in the automation prompt; a parameter missing here never
 # reaches the agent (tests check every generated parameter is listed).
-RUNNER_PARAMS = ["session_id", "wave", "run_id", "branch", "build_root", "manifest_path", "continuation"]
+# `authorizations` is the session's setup-rendered approvals (authorizations.py); the runner prompt
+# puts it first, because approvals only count when they are in the prompt.
+RUNNER_PARAMS = ["authorizations", "session_id", "wave", "run_id", "branch", "build_root", "manifest_path",
+                 "continuation"]
 INTEGRATOR_PARAMS = ["wave", "run_id", "branch", "build_root", "manifest_path"]
 
 # Task keys allow letters, digits, '_' and '-' (max 100 chars). Wave ids become the
@@ -373,7 +377,8 @@ def validate_manifest(m: dict) -> tuple[list[str], list[str]]:
         if deployers and wv.get("concurrency", 1) != 1:
             warnings.append(f"wave {wid}: concurrency forced to 1 (deploying wave)")
 
-    return errors, warnings
+    a_err, a_warn = validate_authorizations(m)
+    return errors + a_err, warnings + a_warn
 
 
 # --- Task graph ----------------------------------------------------------------
@@ -513,7 +518,8 @@ def make_verdict_task(gate_keys: list[str], notebook_path: str) -> dict:
 
 def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: str,
                         retries: dict | None = None, verdict_path: str | None = None,
-                        find_incomplete_path: str | None = None, sync_path: str | None = None) -> list[dict]:
+                        find_incomplete_path: str | None = None, sync_path: str | None = None,
+                        monitor_kept: dict | None = None) -> list[dict]:
     """Generate the build job's task graph from the manifest's runnable waves.
 
     Archived waves generate nothing, so the first runnable wave has no upstream
@@ -530,6 +536,10 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
     With branch sync (sync_enabled), each wave starts with w<w>_sync (notebook, never raises,
     sets `synced`) -> w<w>_synced (If/else) -> w<w>_sessions (outcome true). The sync task
     takes the previous wave's gate_check dependency.
+
+    Each session's for_each input carries its rendered authorizations (tiers 1-3; monitor_kept
+    is the output of authorizations.filter_monitor_grants). find_incomplete_sessions copies them
+    from this job's inputs for continuation passes, so they never come from a file at run time.
     """
     retries = genie_task_retries(m) if retries is None else retries
     find_path = find_incomplete_path or find_incomplete_notebook_path(gate_notebook_path)
@@ -587,11 +597,13 @@ def generate_wave_tasks(m: dict, configuration_ids: dict, gate_notebook_path: st
         # --- Sessions (for_each) ---
         # Include title in inputs so iterations are identifiable in the UI.
         inputs = json.dumps([
-            {"session_id": s["session_id"], "title": s.get("title", s["session_id"])}
+            {"session_id": s["session_id"], "title": s.get("title", s["session_id"]),
+             "authorizations": render_authorizations(m, s, monitor_kept)}
             for s in sessions
         ])
         # continuation "0" on the first run: every RUNNER_PARAMS placeholder must get a value.
-        session_params = {**common, "wave": wid, "session_id": "{{input.session_id}}", "continuation": "0"}
+        session_params = {**common, "wave": wid, "session_id": "{{input.session_id}}", "continuation": "0",
+                          "authorizations": "{{input.authorizations}}"}
 
         inner_task = make_genie_task(
             task_key=f"{prefix}_session",

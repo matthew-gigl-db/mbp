@@ -45,6 +45,8 @@ The manifest supports three workflow modes that control how sessions operate and
 | `continuation_passes` | integer | No | How many times the job re-runs, in the same build run, sessions that stopped without a final status (status file missing, unreadable, or a status other than `pass`, `fail`, `blocked`, `error`; usually the Genie Code step limit). `0`-`3`, default `1`; `0` turns continuation off. A wave can override it. Each pass adds 3 tasks per wave; setup fails if the job would exceed the Lakeflow Jobs limit of 1,000 tasks (Branch Sync adds 2 per wave in `git` / `hybrid` workflows). See Continuation Passes. |
 | `runtime_targets` | map<string, RuntimeTarget> | No | Deployable things (apps, jobs, pipelines, dashboards, Genie spaces) that `converge` sessions deploy and `runtime_gate` checks. Keyed by a short target name. See RuntimeTarget. |
 | `probe_auth` | ProbeAuth | No | Default service principal for app `probes` (a target's own `probe_auth` overrides it). See Probe Object. |
+| `authorization_policy` | object | No | Tiered approvals (see Authorizations): `implied` (default `true`), `monitor_may_authorize` (`[{"action", "scope"}]`), `project_schema` (`catalog.schema`, for the `project_schema` scope), `monitor_grants_file` (relative to `build_root`, default `<plans_dir>/authorizations.monitor.json`). |
+| `defaults` | object | No | `defaults.authorizations`: approvals added to every session (tier 2). |
 | `waves` | Wave[] | Yes | Ordered list of waves. Executed sequentially; sessions within a wave run in parallel. |
 
 ## Continuation Passes
@@ -96,6 +98,20 @@ The integrator depends on the last pass (run_if ALL_DONE), so it still runs when
 | `max_attempts` | integer | No | `converge` only. Max deploy-diagnose-fix iterations before giving up with `status: "fail"`. Default `5`. |
 | `timeout_minutes` | integer | No | Task timeout for this session. Overrides the wave default. |
 | `context_notes` | string | No | Free-text findings handed over from an interactive Genie Code session (known errors, log excerpts, decisions). The runner reads it as context; `scope` still wins. |
+| `authorizations` | Authorization[] | No | Owner approvals for this session (tier 2): `[{"action", "target", "reason"}]`. Rendered first in the session's prompt by setup. See Authorizations. |
+
+## Authorizations
+
+Genie Code job tasks follow only the approvals in their prompt: approval text in files they read (plans, `context_notes`) is ignored, and a side-effecting step that only a file asks for is refused. Setup renders each session's approvals into its `for_each` input; the runner prompt puts `{{authorizations}}` first. Approvals never come from job parameters: a run-now or repair job parameter replaces the same-named task parameter in every task.
+
+| Tier | Source | Rendered |
+| --- | --- | --- |
+| 1. Implied | `converge` / `allow_deploy` sessions: `bundle.deploy` of their bundle; `jobs.run_now` / `pipelines.start_update` on their own job / pipeline `runtime_targets` (opt out with `authorize_run: false` on the target, or `authorization_policy.implied: false`) | Yes |
+| 2. Owner | `defaults.authorizations` and the session's `authorizations` | Yes |
+| 3. Monitor | Entries in the monitor grants file, kept only when `monitor_may_authorize` lists the action and the target is the session's own for that scope (`own_runtime_targets`, `owned_paths`, `owned_assets`, `project_schema`); each needs `evidence` | Yes, labelled as granted by the monitor; setup prints dropped entries |
+| 4. Owner only | `permissions.change`, `uc.grant`, `secrets.write`, `groups.change`, `destroy` | Never; validation rejects them anywhere |
+
+Actions: `bundle.deploy`, `jobs.run_now`, `pipelines.start_update`, `uc_skills.publish`, `workspace.write`, `volume.write`, `sql.ddl`. `target` is free text (an ID, path or `catalog.schema`) or `runtime_target:<key>`, which renders the target's name, `id`, `resource_key` and bundle. Approval wording in `context_notes` triggers a warning. The rules are in `src/notebooks/authorizations.py`.
 
 ## Session Modes
 
@@ -118,6 +134,7 @@ Describes how to deploy, run, and observe one deployable resource. Used by `conv
 | `name` | string | Conditional | Deployed resource name as it appears in the workspace (app name, or job/pipeline/dashboard display name or Genie space title, including any dev-mode prefix). Used by the gate to look it up; a lookup that matches zero or several resources fails. Required for apps; otherwise `name` or `id`. |
 | `id` | string | No | Job id, pipeline id, dashboard id, or Genie space id. Preferred over `name` lookup; strongly recommended for Genie spaces (titles are not unique, setup warns without it). |
 | `bundle_root` | string | No | Absolute workspace path of the bundle that defines the resource. Defaults to `build_root`. |
+| `authorize_run` | boolean | No | `job` / `pipeline` only. Default `true`: converge sessions that own this target are approved to run it (tier 1). `false` removes that approval. |
 | `bundle_target` | string | No | Target to deploy. Defaults to top-level `bundle_target`. |
 | `resource_key` | string | No | Bundle resource key (e.g. `trading_agent_app`), used for `bundle run <resource_key>`. For `genie_space` targets also used to find the space's source file (`resources.genie_spaces.<resource_key>.file_path` in the bundle YAML that `databricks.yml` includes) for the freshness content match. |
 | `source_file` | string | No | `genie_space` only. The space's bundle source file (`*.geniespace.json`), relative to `bundle_root`. Overrides the `resource_key` lookup. Without either, a no-op deploy fails freshness (setup warns). |
