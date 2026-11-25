@@ -43,6 +43,7 @@ The setup job also publishes this file as the UC Skill `<skills_catalog>.<skills
    * Then end your turn waiting for the owner, in the state your platform shows as needing attention (for example blocked or waiting for user). Do not keep polling, start other work, or act on the decision yourself.
    * If your platform suspends idle sessions, say in the report that you will not poll while suspended and that a message resumes you.
    * When the owner answers, re-read the run state and the build branch head before acting (they may have changed), then act only on the option they chose.
+   * **Goal over mechanism.** If the owner's answer names a mechanism (a repair from a given task, a fresh run, which tasks to rerun) that this skill says will not achieve the goal the owner states, for example a repair from `w<w>_sessions` to rerun a session whose iteration ended SUCCESS: at level 4, take the action this skill says does achieve that goal, provided it stays within the same guardrails, `max_repairs` budget, waves and scope, and report what you did instead and why (quote the skill line). Below level 4, or when the alternative would need a broader permission, more repairs, other waves, another stop condition or an action the owner excluded, report the conflict with your recommendation and wait.
 
 ## 1. Find the run and its task states
 
@@ -108,6 +109,7 @@ Every number and status must match the files. Say `not checked` for anything you
 | A fix is needed in a file no re-running session owns (session `blocked` on it, integrator stray, broken shared config) | Report the fix | Report | Push the fix (section 6), repair from `w<w>_sync` | Same as level 3 |
 | Session ended `fail`, or the gate failed, with a cause in bundle source you can quote from the status, gate, runtime or summary files | Report | Report | Report (that session's job) | Push the smallest fix, even in the failed session's `owned_paths` (section 6), then start one fresh run from that wave (section 8 step 4), not a repair: a repair keeps the session's SUCCESS iteration and re-runs nothing |
 | Session `blocked` on a manual prerequisite, or `requests` that change a re-running session's scope | Report and escalate | Same | Same | Same |
+| After your escalation, the owner (or someone acting for the owner) reports a fix outside Git for the failed session's cause, naming what changed (for example a gitignored `variable-overrides.json`, a workspace setting, a grant, a status file) | Report; tell the owner a repair will not rerun the session and a fresh run is needed | Same | Same | Re-read the run state and branch head, check the reported change addresses the cause you quoted, then start one fresh run from that wave's `w<w>_sync` (section 8 step 4) without asking; report it. If the fix is only a status file set to `pass` (no session needs to run again), repair from `w<w>_integrate` instead |
 | Repair refused ("job structure has changed") | Report; the owner decides on a fresh run | Same | Same | Start one fresh run with the run's own `job_parameters` (section 8), report it |
 | Build branch missing on the remote | Report ("Retarget after merge" in the README) | Same | Same | Same |
 | Anything matching a stop condition (guardrail 9) | Report and escalate | Same | Same | Same |
@@ -129,7 +131,7 @@ databricks jobs repair-run <run_id> --no-wait --json '{
 * Always `rerun_dependent_tasks: true` and the run's own `job_parameters`.
 * Start tasks: `w<w>_sync` (sync failed, or a fix was pushed); `w<w>_sessions`, `w<w>_integrate`, `w<w>_gate` (session re-run); `w<w>_integrate`, `w<w>_gate` (integrator only); `w<w>_gate` (gate only).
 * Repairs run as the job's `run_as`, not as you. Check the new repair id in `repair_history`, then keep monitoring.
-* Jobs keeps `for_each` iterations that ended SUCCESS, so a repair does not re-run a session that stopped early; that needs a person.
+* Jobs keeps `for_each` iterations that ended SUCCESS, so a repair does not re-run a session that stopped early or ended `blocked` / `fail`. To run that session again, start a fresh run from the wave's `w<w>_sync` (section 8 step 4; level 4 only, otherwise the owner decides). A session that stopped early mid-work still needs a person to resume it.
 
 ## 6. Fix and repair (levels 3-4)
 
@@ -162,8 +164,8 @@ Use level 4 only when the owner has asked you to complete a build on their behal
    * transient cause: repair from the task the table names, no commit;
    * cause in bundle source with a small, quotable fix: fix and repair from `w<w>_sync` (section 6), or fix and start a fresh run when the fix is in the failed session's own files (step 4);
    * stop condition: escalate and wait (guardrail 10).
-4. Start one fresh run instead of a repair when a repair is refused ("job structure has changed") or when your fix is in a file the failed session owns (section 6 step 4). Use `run-now` with the run's own `job_parameters` and `only` = the failed wave's tasks (from `w<w>_sync`), every later wave's tasks, and `build_verdict` (see `docs/prompts/repair-failed-wave.md` Step 3). Wait until the earlier run has ended. This counts against `max_repairs`.
-   * Before you count a repeat as "the same failure after your fix" (guardrail 9), check that the failed session actually ran again after your push: a new iteration with a start time after your commit. If it did not, your fix never ran; that is not a repeat.
+4. Start one fresh run instead of a repair when a repair is refused ("job structure has changed"), when your fix is in a file the failed session owns (section 6 step 4), or when the owner reports a fix outside Git for the failed session's cause (section 4). Use `run-now` with the run's own `job_parameters` and `only` = the failed wave's tasks (from `w<w>_sync`), every later wave's tasks, and `build_verdict` (see `docs/prompts/repair-failed-wave.md` Step 3). Wait until the earlier run has ended. This counts against `max_repairs`.
+   * Before you count a repeat as "the same failure after your fix" (guardrail 9), check that the failed session actually ran again after your push or the owner's reported fix: a new iteration with a start time after it. If it did not, the fix never ran; that is not a repeat.
 5. Repeat until `BUILD_PASSED`, `BUILD_WARNING`, or a stop condition. Never start a run for any other reason.
 6. Final report: every run and repair id, every decision with the file and line that justified it, every commit (SHA, files, reason), every approval you granted (section 9), and the verdict line.
 
