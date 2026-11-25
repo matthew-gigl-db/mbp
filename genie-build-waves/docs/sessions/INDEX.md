@@ -1,5 +1,11 @@
 # Session Summaries — genie-build-waves
 
+## 2026-11-25
+
+| Session | Summary |
+|---|---|
+| [monitor-owner-fixes](2026-11-25_monitor-owner-fixes.md) | Monitor skill: level 4 starts a fresh run from `w<w>_sync` without asking when the owner reports a fix outside Git (gitignored file, workspace setting, grant); "goal over mechanism" rule for owner answers whose named repair would not reach their stated goal. |
+
 ## 2026-11-15
 
 | Session | Summary |
